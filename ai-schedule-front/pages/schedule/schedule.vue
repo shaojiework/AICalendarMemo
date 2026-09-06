@@ -238,6 +238,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { scheduleApi } from '@/api/schedule'
 
 const weekList = ref([])
@@ -269,7 +270,12 @@ const typeOptions = [
   { label: '其他', value: 'normal', color: '#36C9A5' }
 ]
 
-const selectedDate = ref(new Date())
+// 选中日期（yyyy-MM-dd格式），初始为今天——保证onShow先于initWeekList执行时也能正确拼URL
+const formatToday = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+const selectedDate = ref(formatToday())
 
 const morningSchedules = computed(() => {
   return scheduleList.value.filter(item => {
@@ -567,8 +573,13 @@ const handleSearch = async () => {
   }
 }
 
+// 周列表只在首次进入时初始化
 onMounted(() => {
   initWeekList()
+})
+
+// tab页每次切换都重新加载（如AI创建日程后回到本页能立即看到）
+onShow(() => {
   loadSchedules()
 })
 </script>

@@ -59,6 +59,10 @@ export const memorialApi = {
         url: baseUrl + '/api/file/upload',
         filePath: filePath,
         name: 'file',
+        // 携带JWT令牌
+        header: {
+          'Authorization': 'Bearer ' + getToken()
+        },
         formData: {
           type: 'memorial'
         },

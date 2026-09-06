@@ -78,6 +78,18 @@
             <version>4.4.0</version>
         </dependency>
 
+        <!-- BCrypt密码加密（仅加密工具包，不启用Security过滤链） -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+
+        <!-- AOP切面（角色权限校验） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>

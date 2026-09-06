@@ -14,9 +14,9 @@
           <uni-icons type="camera" size="24" color="#fff"></uni-icons>
         </view>
       </view>
-      <text class="username">{{ profile.username }}</text>
-      <text class="user-desc">{{ profile.description }}</text>
-      
+      <text class="username">{{ profile.nickname || profile.username }}</text>
+      <text class="user-desc">{{ roleText }}</text>
+
       <view class="stats-row">
         <view class="stat-item">
           <text class="stat-num">{{ profile.scheduleCount || 0 }}</text>
@@ -29,7 +29,7 @@
         </view>
         <view class="stat-divider"></view>
         <view class="stat-item">
-          <text class="stat-num">{{ profile.daysUsing || 0 }}</text>
+          <text class="stat-num">{{ daysUsing }}</text>
           <text class="stat-label">使用天数</text>
         </view>
       </view>
@@ -92,38 +92,64 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { profileApi } from '@/api/profile'
+import { userApi } from '@/api/user'
 import { baseUrl } from '@/config/baseUrl'
+import { clearLoginState, getUserInfo, setUserInfo } from '@/utils/auth'
 
 const getAvatarUrl = (avatar) => {
   if (!avatar) return '/static/avatar.png'
   return baseUrl + avatar
 }
 const loading = ref(false)
+// 登录用户信息：初始取本地缓存避免闪烁，加载后用接口数据覆盖
 const profile = reactive({
   id: null,
-  username: '小橘',
+  username: '',
+  nickname: '',
   avatar: null,
-  description: '@xiao_ju · 生活记录者',
-  daysUsing: 0,
+  role: 'USER',
+  createdAt: null,
   scheduleCount: 0,
   memorialCount: 0
 })
+Object.assign(profile, getUserInfo())
 
-onMounted(() => {
+// 角色展示文案
+const roleText = computed(() => profile.role === 'ADMIN' ? '管理员' : '普通用户')
+
+// 使用天数：按注册时间计算（含当天）
+const daysUsing = computed(() => {
+  if (!profile.createdAt) return 0
+  const created = new Date(profile.createdAt)
+  return Math.max(1, Math.floor((Date.now() - created.getTime()) / 86400000) + 1)
+})
+
+// tab页每次切换都重新加载（刷新日程/纪念日统计）
+onShow(() => {
   loadProfile()
 })
 
 const loadProfile = async () => {
   loading.value = true
   try {
-    const res = await profileApi.getProfile()
-    if (res.code === 200 && res.data) {
-      Object.assign(profile, res.data)
+    // 身份信息走user接口，日程/纪念日统计沿用原profile接口
+    const [userRes, statRes] = await Promise.all([
+      userApi.getInfo(),
+      profileApi.getProfile()
+    ])
+    if (userRes.code === 200 && userRes.data) {
+      Object.assign(profile, userRes.data)
+      // 同步本地缓存，保持首页展示一致
+      setUserInfo({ ...getUserInfo(), ...userRes.data })
+    }
+    if (statRes.code === 200 && statRes.data) {
+      profile.scheduleCount = statRes.data.scheduleCount || 0
+      profile.memorialCount = statRes.data.memorialCount || 0
     }
   } catch (error) {
-    console.error('加载用户信息失败:', error)
     uni.showToast({
       title: '加载失败',
       icon: 'none'
@@ -146,10 +172,15 @@ const logout = () => {
     content: '确定要退出登录吗？',
     success: function (res) {
       if (res.confirm) {
+        // 清除登录状态并返回登录页
+        clearLoginState()
         uni.showToast({
           title: '已退出',
           icon: 'none'
         })
+        setTimeout(() => {
+          uni.reLaunch({ url: '/pages/login/login' })
+        }, 800)
       }
     }
   })
@@ -190,7 +221,10 @@ const uploadAvatar = async (filePath) => {
     const res = await profileApi.uploadAvatar(filePath)
     if (res.code === 200) {
       profile.avatar = res.data
-      await profileApi.updateProfile({ avatar: res.data })
+      // 头像路径更新到登录用户信息
+      await userApi.updateProfile({ avatar: res.data })
+      // 同步本地缓存，保持首页展示一致
+      setUserInfo({ ...getUserInfo(), avatar: res.data })
       uni.showToast({
         title: '头像更新成功',
         icon: 'success'

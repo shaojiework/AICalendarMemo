@@ -29,6 +29,12 @@
 			"style": {
 				"navigationBarTitleText": "profile"
 			}
+		},
+		{
+			"path": "pages/login/login",
+			"style": {
+				"navigationBarTitleText": "login"
+			}
 		}
 	],
 	"globalStyle": {

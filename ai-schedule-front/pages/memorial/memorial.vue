@@ -225,7 +225,8 @@
 
 <script setup>
 import { memorialApi } from '@/api/memorial'
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { baseUrl } from '@/config/baseUrl'
 
 const getAvatarUrl = (avatar) => {
@@ -536,7 +537,8 @@ const adjustBrightness = (hex, percent) => {
 
 
 
-onMounted(() => {
+// tab页每次切换都重新加载（如AI创建纪念日后回到本页能立即看到）
+onShow(() => {
   loadMemorials()
 })
 </script>

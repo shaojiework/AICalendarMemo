@@ -1,7 +1,12 @@
 <script>
+	import { getToken } from '@/utils/auth'
+
 	export default {
 		onLaunch: function() {
-			console.log('App Launch')
+			// 登录守卫：应用启动时无token则跳转登录页
+			if (!getToken()) {
+				uni.reLaunch({ url: '/pages/login/login' })
+			}
 		},
 		onShow: function() {
 			console.log('App Show')

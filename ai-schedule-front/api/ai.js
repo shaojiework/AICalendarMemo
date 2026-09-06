@@ -1,4 +1,10 @@
 import { baseUrl } from '@/config/baseUrl'
+import { getToken } from '@/utils/auth'
+
+// 带JWT令牌的请求头（ai模块直连uni.request，需手动携带token）
+const authHeader = () => ({
+  'Authorization': 'Bearer ' + getToken()
+})
 
 /**
  * AI 接口封装
@@ -110,6 +116,7 @@ export const aiApi = {
       uni.request({
         url: `${apiBaseUrl}/api/ai/chat`,
         method: 'POST',
+        header: authHeader(),
         data: {
           conversationId: conversationId,
           message: message
@@ -138,6 +145,7 @@ export const aiApi = {
       uni.request({
         url: `${apiBaseUrl}/api/ai/chat/history`,
         method: 'GET',
+        header: authHeader(),
         data: {
           conversationId: conversationId
         },
@@ -165,6 +173,7 @@ export const aiApi = {
       uni.request({
         url: `${apiBaseUrl}/api/ai/chat/recent`,
         method: 'GET',
+        header: authHeader(),
         data: {
           limit: limit
         },
@@ -192,6 +201,7 @@ export const aiApi = {
       uni.request({
         url: `${apiBaseUrl}/api/ai/chat`,
         method: 'DELETE',
+        header: authHeader(),
         data: {
           conversationId: conversationId
         },

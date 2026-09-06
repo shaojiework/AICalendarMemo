@@ -10,11 +10,11 @@
       <!-- 顶部问候 -->
       <view class="header">
         <view class="greeting-block">
-          <text class="greet-text">{{ greeting }}，{{ username }} ☀️</text>
+          <text class="greet-text">{{ greeting }}，{{ displayName }} ☀️</text>
           <text class="date-text">{{ currentDate }}</text>
         </view>
         <view class="small-btn" @click="navTo('/pages/profile/profile')">
-          <text class="btn-text">{{ username?.charAt(0) || '小' }}</text>
+          <text class="btn-text">{{ displayName?.charAt(0) || '用' }}</text>
         </view>
       </view>
 
@@ -72,14 +72,24 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
 import { homeApi } from '@/api/home'
+import { getUserInfo } from '@/utils/auth'
 
 const loading = ref(false)
 const greeting = ref('早上好')
-const username = ref('小橘')
+const username = ref('用户')
 const anniversary = ref(null)
 const todaySchedule = ref([])
+
+// 登录用户信息（响应式，tab切换时从本地缓存同步）
+const userInfo = ref(getUserInfo())
+
+// 显示名：昵称优先，其次用户名
+const displayName = computed(() => {
+  return userInfo.value?.nickname || userInfo.value?.username || username.value
+})
 
 const funcList = ref([
   { id: 1, name: '日程', icon: 'calendar', color: '#409EFF', path: '/pages/schedule/schedule' },
@@ -100,7 +110,9 @@ const currentDate = computed(() => {
   return `${year}年${month}月${day}日 ${weekDay}`
 })
 
-onMounted(() => {
+// tab页每次切换都触发：同步登录用户信息 + 重新加载数据（如日程页新增后回到首页刷新）
+onShow(() => {
+  userInfo.value = getUserInfo()
   loadHomeData()
 })
 
@@ -112,9 +124,6 @@ const loadHomeData = async () => {
       const data = res.data
       if (data.greeting) {
         greeting.value = data.greeting
-      }
-      if (data.username) {
-        username.value = data.username
       }
       if (data.anniversary) {
         anniversary.value = data.anniversary

@@ -37,3 +37,9 @@ mybatis-plus:
 file:
   upload-dir: uploads/
   access-path: /upload/
+
+jwt:
+  # 签名密钥（生产环境请通过环境变量注入）
+  secret: ${JWT_SECRET:ai-calendar-jwt-secret-key}
+  # token过期时间（小时）
+  expire-hours: 2

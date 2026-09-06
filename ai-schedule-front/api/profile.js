@@ -1,5 +1,6 @@
 import { request } from '@/utils/request'
 import { baseUrl } from '@/config/baseUrl'
+import { getToken } from '@/utils/auth'
 
 export const profileApi = {
   getProfile() {
@@ -23,6 +24,10 @@ export const profileApi = {
         url: baseUrl + '/api/file/upload',
         filePath: filePath,
         name: 'file',
+        // 携带JWT令牌
+        header: {
+          'Authorization': 'Bearer ' + getToken()
+        },
         formData: {
           type: 'profile'
         },
