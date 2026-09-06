@@ -1,0 +1,177 @@
+// uni.scss - 全局样式变量与通用配置
+
+// ==========================================
+// 主题颜色
+// ==========================================
+$color-primary: #409EFF;
+$color-primary-light: #67B8FF;
+$color-secondary: #7B5EA7;
+$color-secondary-light: #A78FD5;
+
+// 粉色系
+$color-pink: #FF7B9C;
+$color-pink-light: #FF95CC;
+$color-pink-bg: #FFF0F7;
+
+// 其他功能色
+$color-orange: #FF9C40;
+$color-orange-light: #FFB74D;
+$color-yellow: #FFB74D;
+$color-yellow-bg: #FFF8E6;
+$color-green: #36C9A5;
+$color-green-bg: #ECFFF0;
+$color-purple: #7940EC;
+$color-purple-bg: #F0ECFF;
+$color-blue-bg: #E6F4FF;
+$color-red: #FF6B6B;
+$color-red-bg: #FFF0F0;
+
+// ==========================================
+// 文本颜色
+// ==========================================
+$text-primary: #1a1a2e;
+$text-secondary: #6b6b8a;
+$text-tertiary: #a0a0b8;
+$text-white: #ffffff;
+$text-placeholder: #999999;
+
+// ==========================================
+// 边框颜色
+// ==========================================
+$border-color: #f0f0f0;
+
+// ==========================================
+// 背景颜色
+// ==========================================
+$bg-page: #f7f5ff;
+$bg-white: #ffffff;
+$bg-card: #ffffff;
+$bg-gray: #f5f5f5;
+
+// ==========================================
+// 渐变色
+// ==========================================
+$gradient-blue-pink: linear-gradient(90deg, #409EFF, #FF95CC);
+$gradient-blue: linear-gradient(135deg, #409EFF, #67B8FF);
+$gradient-pink: linear-gradient(135deg, #FF95CC, #FFB5D8);
+$gradient-purple: linear-gradient(135deg, #7B5EA7, #A78FD5);
+$gradient-blue-purple: linear-gradient(135deg, #409EFF, #7B5EA7);
+$gradient-blue-pink-vertical: linear-gradient(180deg, #409EFF, #FF95CC);
+
+// ==========================================
+// 间距
+// ==========================================
+$spacing-xs: 8rpx;
+$spacing-sm: 12rpx;
+$spacing-md: 16rpx;
+$spacing-lg: 24rpx;
+$spacing-xl: 32rpx;
+$spacing-xxl: 40rpx;
+$spacing-xxxl: 48rpx;
+
+// ==========================================
+// 圆角
+// ==========================================
+$radius-xs: 4rpx;
+$radius-sm: 16rpx;
+$radius-md: 20rpx;
+$radius-lg: 24rpx;
+$radius-xl: 30rpx;
+$radius-full: 999rpx;
+
+// ==========================================
+// 字体大小
+// ==========================================
+$font-xs: 20rpx;
+$font-sm: 24rpx;
+$font-md: 26rpx;
+$font-lg: 28rpx;
+$font-xl: 32rpx;
+$font-xxl: 36rpx;
+$font-xxxl: 40rpx;
+$font-display: 80rpx;
+
+// ==========================================
+// 字重
+// ==========================================
+$font-normal: 400;
+$font-medium: 500;
+$font-semibold: 600;
+$font-bold: 700;
+
+// ==========================================
+// 阴影
+// ==========================================
+$shadow-sm: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+$shadow-md: 0 8rpx 32rpx rgba(0, 0, 0, 0.04);
+
+// ==========================================
+// 图标大小
+// ==========================================
+$icon-sm: 16rpx;
+$icon-md: 36rpx;
+$icon-lg: 56rpx;
+
+// ==========================================
+// 全局基础样式
+// ==========================================
+page {
+  background-color: $bg-page;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+// H5 端的 body 重置
+body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+// ==========================================
+// 通用 mixins
+// ==========================================
+@mixin card-shadow {
+  box-shadow: $shadow-sm;
+}
+
+@mixin card-shadow-lg {
+  box-shadow: $shadow-md;
+}
+
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+@mixin flex-col-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+// ==========================================
+// 通用组件样式
+// ==========================================
+@mixin tag($bg, $color) {
+  padding: $spacing-xs $spacing-lg;
+  border-radius: $radius-full;
+  background-color: $bg;
+  color: $color;
+  font-size: $font-sm;
+}
+
+@mixin gradient-bg($color1, $color2, $direction: 135deg) {
+  background: linear-gradient($direction, $color1, $color2);
+}

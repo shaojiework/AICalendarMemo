@@ -1,0 +1,103 @@
+{
+	"pages": [ 
+		{
+			"path": "pages/home/home",
+			"style": {
+				"navigationBarTitleText": "home"
+			}
+		},
+		{
+			"path": "pages/schedule/schedule",
+			"style": {
+				"navigationBarTitleText": "schedule"
+			}
+		},
+		{
+			"path": "pages/memorial/memorial",
+			"style": {
+				"navigationBarTitleText": "memorial"
+			}
+		},
+		{
+			"path": "pages/ai/ai",
+			"style": {
+				"navigationBarTitleText": "ai"
+			}
+		},
+		{
+			"path": "pages/profile/profile",
+			"style": {
+				"navigationBarTitleText": "profile"
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "uni-app",
+		"navigationBarBackgroundColor": "#F8F8F8",
+		"backgroundColor": "#F8F8F8"
+	},
+	"tabBar": {
+		"color": "#999999",
+		"selectedColor": "#409EFF",
+		"backgroundColor": "#fff",
+		"borderStyle": "#fff",
+		"iconfontSrc": "/static/iconfont/iconfont.ttf",
+		"list": [
+			{
+				"pagePath": "pages/home/home",
+				"text": "首页",
+				"iconfont":{
+					"text":"\ue9a0",
+					"color": "#A0A0B8",
+					"selectedColor": "#409EFF"
+					
+				}
+			},
+			{
+				"pagePath": "pages/schedule/schedule",
+				"text": "日程",
+				"iconfont":{
+					"text":"\ue8f2",
+					"color": "#A0A0B8",
+					"selectedColor": "#409EFF"
+					
+				}
+			},
+			{
+				"pagePath": "pages/memorial/memorial",
+				"text": "纪念",
+				
+				
+				"iconfont":{
+					"text":"\uec63",
+					"color": "#A0A0B8",
+					"selectedColor": "#FF95CC"
+					
+					
+				}
+			},
+			{
+				"pagePath": "pages/ai/ai",
+				"text": "AI",
+				"iconfont":{
+					"text":"\uea3f",
+					"color": "#A0A0B8",
+					"selectedColor": "#7B5EA7"
+					
+				}
+			},
+			{
+				"pagePath": "pages/profile/profile",
+				"text": "我的",
+				"iconfont":{
+					"text":"\ue60b",
+					"color": "#A0A0B8",
+					"selectedColor": "#7B5EA7"
+					
+				}
+			}
+		]
+	},
+	"uniIdRouter": {}
+}

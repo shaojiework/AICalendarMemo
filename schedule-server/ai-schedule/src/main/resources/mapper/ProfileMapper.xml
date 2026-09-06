@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aicalendar.mapper.ProfileMapper">
+
+    <resultMap id="ProfileResultMap" type="com.aicalendar.entity.Profile">
+        <id column="id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="avatar" property="avatar"/>
+        <result column="description" property="description"/>
+        <result column="register_date" property="registerDate"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="ProfileResultMap">
+        SELECT id, username, avatar, description, register_date, created_at, updated_at
+        FROM profile
+        WHERE id = #{id}
+    </select>
+
+    <update id="updateById">
+        UPDATE profile
+        <set>
+            <if test="username != null">username = #{username},</if>
+            <if test="avatar != null">avatar = #{avatar},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="registerDate != null">register_date = #{registerDate},</if>
+            updated_at = CURRENT_TIMESTAMP
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO profile (username, avatar, description, register_date)
+        VALUES (#{username}, #{avatar}, #{description}, #{registerDate})
+    </insert>
+
+    <select id="count" resultType="int">
+        SELECT COUNT(*) FROM profile
+    </select>
+
+</mapper>
