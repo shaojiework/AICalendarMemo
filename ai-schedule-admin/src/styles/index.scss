@@ -1,0 +1,145 @@
+/**
+ * 全局基础样式 + Element Plus 深色主题定制
+ * SCSS 变量由 vite additionalData 全局注入，本文件可直接使用 $变量
+ * 策略：引入官方 dark 主题 token（main.js）后，在 html.dark 下统一覆盖
+ *      Element Plus 运行时 CSS 变量（--el-*）为深蓝配色（单一控制源），
+ *      表格等强定制区域用局部变量 + 最小类名规则补齐。
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: $page-bg;
+  font-family:
+    'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', Arial, sans-serif;
+  font-size: 13px;
+  color: $text-primary;
+}
+
+/* ================= Element Plus 深色主题变量覆盖 ================= */
+html.dark {
+  /* 基础字号调小（默认 14px → 13px） */
+  --el-font-size-base: 13px;
+
+  /* 页面/卡片/弹层背景：深蓝体系 */
+  --el-bg-color-page: #{$page-bg};
+  --el-bg-color: #{$card-bg};
+  --el-bg-color-overlay: #{$overlay-bg};
+  --el-fill-color-blank: #{$card-bg};
+  --el-fill-color-light: rgba(148, 188, 224, 0.08);
+  --el-fill-color: rgba(148, 188, 224, 0.1);
+
+  /* 文字颜色 */
+  --el-text-color-primary: #{$text-primary};
+  --el-text-color-regular: #{$text-regular};
+  --el-text-color-secondary: #{$text-secondary};
+  --el-text-color-placeholder: #6b83a0;
+
+  /* 边框/分隔线 */
+  --el-border-color: rgba(148, 188, 224, 0.18);
+  --el-border-color-light: rgba(148, 188, 224, 0.14);
+  --el-border-color-lighter: rgba(148, 188, 224, 0.1);
+  --el-border-color-extra-light: rgba(148, 188, 224, 0.08);
+
+  /* 菜单字号同步缩小 */
+  --el-menu-font-size: 13px;
+}
+
+/* 主内容区/弹窗滚动条美化 */
+.layout-main::-webkit-scrollbar,
+.el-dialog__body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.layout-main::-webkit-scrollbar-thumb,
+.el-dialog__body::-webkit-scrollbar-thumb {
+  background: #2c4a6e;
+  border-radius: 4px;
+}
+
+.layout-main::-webkit-scrollbar-track,
+.el-dialog__body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ================= 列表页容器（语义化 div 卡片） ================= */
+/* 页面根容器：占满主内容区高度（父级 .layout-main 为 flex 定高子项，百分比可解析），
+   纵向弹性列，让表格卡片自动填满搜索区以下的剩余空间 */
+.page-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.search-card {
+  background-color: $card-bg;
+  border: 1px solid $navbar-border;
+  border-radius: 6px;
+  padding: 18px 20px 2px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.table-card {
+  background-color: $card-bg;
+  border: 1px solid $navbar-border;
+  border-radius: 6px;
+  padding: 16px;
+  /* flex:1 填满搜索区以下剩余高度；min-height:0 允许内容超高时收缩回落到主内容区滚动 */
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+
+}
+
+/* ================= 表格深色主题（全站统一，局部变量优先） ================= */
+.el-table {
+  /* Element Plus 表格官方 CSS 变量：一处覆盖，表头/行/边框/hover 全部生效 */
+  --el-table-bg-color: #{$table-row-bg};
+  --el-table-tr-bg-color: #{$table-row-bg};
+  --el-table-header-bg-color: #{$table-header-bg};
+  --el-table-header-text-color: #{$table-header-text};
+  --el-table-text-color: #{$table-text};
+  --el-table-border-color: #{$table-border};
+  --el-table-row-hover-bg-color: #{$table-row-hover};
+  --el-table-current-row-bg-color: #{$table-row-hover};
+  background-color: $table-row-bg;
+
+  /* 斑马纹交替行：#0f3143（变量未覆盖该节点，最小类名补齐） */
+  &.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
+    background-color: $table-stripe-bg;
+  }
+
+  /* hover 行：#4697d0 亮蓝底 + 白色文字（高特异性兜底，确保压过斑马纹规则） */
+  .el-table__body tr:hover > td.el-table__cell,
+  .el-table__body tr:hover > .el-table__cell.is-sticky {
+    background-color: $table-row-hover !important;
+    color: #ffffff;
+  }
+
+  /* 固定列（sticky）背景跟随行背景，避免透出底色 */
+  .el-table__cell.is-sticky {
+    background-color: $table-row-bg;
+  }
+
+  &.el-table--striped .el-table__body tr.el-table__row--striped .el-table__cell.is-sticky {
+    background-color: $table-stripe-bg;
+  }
+
+  /* 空数据文字颜色 */
+  .el-table__empty-text {
+    color: $table-text;
+  }
+}

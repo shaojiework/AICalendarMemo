@@ -1,0 +1,40 @@
+/**
+ * 全局 SCSS 变量（编译期常量）
+ * 通过 vite.config.js 的 additionalData 全局注入，任何 <style lang="scss"> 可直接引用
+ * 注意：Element Plus 主题定制（--el-*）属于运行时 CSS 变量，在 index.scss 的 html.dark 中用本文件变量插值
+ */
+
+/* ===== 布局尺寸 ===== */
+$sidebar-width: 200px; // 侧边栏展开宽度
+$sidebar-collapse-width: 64px; // 侧边栏折叠宽度
+$navbar-height: 52px; // 顶栏高度
+
+/* ===== 侧边栏 ===== */
+$sidebar-bg: #09172d; // 侧边栏背景（与页面同色）
+$sidebar-bg-deep: #05101f; // Logo 区更深背景
+$sidebar-active-bg: #053f74; // 菜单选中背景
+$sidebar-hover-bg: #0d2a47; // 菜单悬停背景
+$sidebar-text: #9fb4cc; // 菜单默认文字
+
+/* ===== 顶栏 ===== */
+$navbar-bg: #0c2444; // 顶栏背景
+$navbar-border: rgba(148, 188, 224, 0.14); // 顶栏底部分割线
+
+/* ===== 页面与卡片 ===== */
+$page-bg: #09172d; // 页面背景
+$card-bg: #0f2847; // 卡片背景
+$overlay-bg: #122f52; // 弹层背景（对话框/下拉）
+
+/* ===== 表格深色主题 ===== */
+$table-header-bg: #022643; // 表头背景
+$table-row-bg: #022643; // 表格行默认背景
+$table-stripe-bg: #0f3143; // 斑马纹交替行背景
+$table-row-hover: #4697d0; // 行 hover/选中背景
+$table-text: #d8e6f5; // 表格正文文字
+$table-header-text: #cfe0f2; // 表头文字
+$table-border: rgba(148, 188, 224, 0.16); // 表格分隔线
+
+/* ===== 文字颜色 ===== */
+$text-primary: #dce8f7; // 主要文字
+$text-regular: #b7c9de; // 常规文字
+$text-secondary: #8ba3bf; // 次要文字
