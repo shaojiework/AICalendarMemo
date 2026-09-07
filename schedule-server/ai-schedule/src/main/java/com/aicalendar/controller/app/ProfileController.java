@@ -1,4 +1,4 @@
-package com.aicalendar.controller;
+package com.aicalendar.controller.app;
 
 import com.aicalendar.dto.request.ProfileUpdateRequest;
 import com.aicalendar.dto.response.ProfileResponse;

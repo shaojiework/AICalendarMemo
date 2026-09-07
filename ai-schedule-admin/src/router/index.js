@@ -1,13 +1,19 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '@/store/auth'
 import Layout from '@/views/layout/Index.vue'
 
 /**
  * 后台路由表
- * meta.title：菜单名/面包屑文案
- * meta.icon：Element Plus 图标组件名（已全局注册，Sidebar 用 <component :is> 渲染）
- * meta.hidden：不在侧边栏菜单显示（预留）
+ * meta.title：菜单名
+ * meta.icon：Element Plus 图标组件名
  */
 const routes = [
+  {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/views/login/Index.vue'),
+    meta: { title: '登录' }
+  },
   {
     path: '/',
     component: Layout,
@@ -50,6 +56,28 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes
+})
+
+/**
+ * 全局路由守卫：未登录时强制跳转登录页
+ */
+router.beforeEach((to, from, next) => {
+  const authStore = useAuthStore()
+  if (to.path === '/login') {
+    // 已登录访问登录页，直接跳转首页
+    if (authStore.token) {
+      next('/')
+    } else {
+      next()
+    }
+    return
+  }
+  // 其他页面需要登录
+  if (!authStore.token) {
+    next('/login')
+    return
+  }
+  next()
 })
 
 export default router

@@ -1,4 +1,4 @@
-package com.aicalendar.controller;
+package com.aicalendar.controller.app;
 
 import com.aicalendar.dto.response.Result;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,7 +37,7 @@ public class FileController {
     public Result<String> uploadFile(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "type", defaultValue = "avatar") String type) {
-        
+
         if (file.isEmpty()) {
             return Result.error(400, "请选择要上传的文件");
         }
@@ -60,7 +60,7 @@ public class FileController {
             String basePath = System.getProperty("user.dir");
             // 创建业务类型子目录
             Path uploadPath = Paths.get(basePath, uploadDir, type);
-            
+
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
@@ -79,9 +79,9 @@ public class FileController {
 
     private boolean isValidImage(String filename) {
         String lowerFilename = filename.toLowerCase();
-        return lowerFilename.endsWith(".jpg") || 
-               lowerFilename.endsWith(".jpeg") || 
-               lowerFilename.endsWith(".png") || 
+        return lowerFilename.endsWith(".jpg") ||
+               lowerFilename.endsWith(".jpeg") ||
+               lowerFilename.endsWith(".png") ||
                lowerFilename.endsWith(".gif");
     }
 }

@@ -34,6 +34,13 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
 
+# PageHelper 分页插件配置
+pagehelper:
+  helper-dialect: mysql
+  # 分页合理化：页码越界时自动修正（小于1查首页，大于总页数查末页）
+  reasonable: true
+  support-methods-arguments: true
+
 file:
   upload-dir: uploads/
   access-path: /upload/

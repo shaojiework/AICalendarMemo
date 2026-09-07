@@ -22,5 +22,14 @@ export default defineConfig({
         additionalData: `@use "@/styles/variables.scss" as *;`
       }
     }
+  },
+  server: {
+    proxy: {
+      // 统一代理 /api 到 SpringBoot 后端（后端接口路径已含 /api 前缀，无需 rewrite）
+      '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
+      }
+    }
   }
 })

@@ -1,4 +1,4 @@
-package com.aicalendar.controller;
+package com.aicalendar.controller.app;
 
 import com.aicalendar.dto.response.HomeResponse;
 import com.aicalendar.dto.response.Result;

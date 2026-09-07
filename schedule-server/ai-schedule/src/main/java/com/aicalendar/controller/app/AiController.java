@@ -1,4 +1,4 @@
-package com.aicalendar.controller;
+package com.aicalendar.controller.app;
 
 import com.aicalendar.dto.request.AiChatRequest;
 import com.aicalendar.dto.response.Result;
@@ -62,20 +62,20 @@ public class AiController {
         if (request.getConversationId() == null || request.getConversationId().isEmpty()) {
             request.setConversationId(UUID.randomUUID().toString());
         }
-        
+
         // 保存用户消息
         aiChatService.saveChat(request.getConversationId(), "user", request.getMessage());
-        
+
         // 使用 SpringAI 生成响应
         ChatClient chatClient = chatClientBuilder.build();
         String response = chatClient.prompt()
             .user(request.getMessage())
             .call()
             .content();
-        
+
         // 保存AI响应
         aiChatService.saveChat(request.getConversationId(), "assistant", response);
-        
+
         return Result.success("查询成功", response);
     }
 }

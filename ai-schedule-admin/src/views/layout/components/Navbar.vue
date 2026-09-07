@@ -1,7 +1,8 @@
 <script setup>
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
+import { useAuthStore } from '@/store/auth'
 
 defineProps({
   isCollapse: {
@@ -13,13 +14,20 @@ defineProps({
 const emit = defineEmits(['toggle-collapse'])
 
 const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
 
 // 面包屑：从当前路由 matched 链提取 meta.title，自动随路由变化
 const breadcrumbs = computed(() =>
   route.matched.filter((item) => item.meta?.title).map((item) => item.meta.title)
 )
 
-// 退出登录：二次确认（静态阶段仅提示，对接阶段清除 token 并跳转登录页）
+// 管理员昵称，取登录返回的 nickname，无则回退 username
+const adminName = computed(() => authStore.userInfo?.nickname || authStore.userInfo?.username || '管理员')
+// 头像文字：取昵称/用户名首字
+const avatarText = computed(() => adminName.value.charAt(0))
+
+// 退出登录：清除 token 和用户信息，跳转登录页
 const handleLogout = () => {
   ElMessageBox.confirm('确定要退出登录吗？', '提示', {
     confirmButtonText: '确定',
@@ -27,8 +35,9 @@ const handleLogout = () => {
     type: 'warning'
   })
     .then(() => {
+      authStore.logout()
       ElMessage.success('已退出登录')
-      // TODO 对接阶段：清除本地 token，router.push('/login')
+      router.push('/login')
     })
     .catch(() => {})
 }
@@ -42,19 +51,20 @@ const handleLogout = () => {
         <Fold v-if="!isCollapse" />
         <Expand v-else />
       </el-icon>
-      <!-- 面包屑导航 -->
-      <el-breadcrumb separator="/">
-        <el-breadcrumb-item v-for="(crumb, index) in breadcrumbs" :key="index">
+      <!-- 面包屑导航（普通文本展示） -->
+      <div class="breadcrumb-text">
+        <span v-for="(crumb, index) in breadcrumbs" :key="index">
+          <span v-if="index > 0" class="separator">/</span>
           {{ crumb }}
-        </el-breadcrumb-item>
-      </el-breadcrumb>
+        </span>
+      </div>
     </div>
 
     <div class="navbar-right">
       <el-dropdown trigger="click">
         <div class="admin-info">
-          <el-avatar :size="32" class="admin-avatar">管</el-avatar>
-          <span class="admin-name">管理员</span>
+          <el-avatar :size="32" class="admin-avatar">{{ avatarText }}</el-avatar>
+          <span class="admin-name">{{ adminName }}</span>
           <el-icon><ArrowDown /></el-icon>
         </div>
         <template #dropdown>
@@ -89,6 +99,16 @@ const handleLogout = () => {
 
     &:hover {
       color: #409eff;
+    }
+  }
+
+  .breadcrumb-text {
+    font-size: 14px;
+    color: var(--el-text-color-secondary);
+
+    .separator {
+      margin: 0 8px;
+      color: var(--el-text-color-placeholder);
     }
   }
 

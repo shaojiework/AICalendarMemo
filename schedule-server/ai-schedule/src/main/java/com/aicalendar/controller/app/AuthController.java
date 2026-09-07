@@ -1,4 +1,4 @@
-package com.aicalendar.controller;
+package com.aicalendar.controller.app;
 
 import com.aicalendar.dto.request.LoginRequest;
 import com.aicalendar.dto.request.RegisterRequest;

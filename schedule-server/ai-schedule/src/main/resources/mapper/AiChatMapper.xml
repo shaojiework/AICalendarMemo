@@ -32,4 +32,30 @@
         DELETE FROM ai_chat WHERE conversation_id = #{conversationId}
     </delete>
 
+    <!-- 后台：会话列表，按对话ID分组聚合，支持按对话ID模糊搜索 -->
+    <select id="selectConversationList" resultType="com.aicalendar.dto.response.AdminConversationResponse">
+        SELECT conversation_id AS conversationId,
+               COUNT(*) AS messageCount,
+               MAX(created_at) AS lastTime
+        FROM ai_chat
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND conversation_id LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+        </where>
+        GROUP BY conversation_id
+        ORDER BY lastTime DESC
+    </select>
+
+    <!-- 后台：会话总数（按对话ID去重） -->
+    <select id="countDistinctConversations" resultType="int">
+        SELECT COUNT(DISTINCT conversation_id) FROM ai_chat
+    </select>
+
+    <!-- 后台：查询指定时间范围内的全部聊天记录（用于趋势统计） -->
+    <select id="selectByTimeRange" resultMap="AiChatResult">
+        SELECT * FROM ai_chat
+        WHERE created_at &gt;= #{startTime} AND created_at &lt; #{endTime}
+    </select>
+
 </mapper>
