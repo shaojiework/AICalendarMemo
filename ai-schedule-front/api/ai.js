@@ -24,6 +24,9 @@ export const aiApi = {
 
     // 将 http/https 转换为 ws/wss
     let wsUrl = apiBaseUrl.replace(/^http/, 'ws') + '/ws/ai/chat'
+    // 握手阶段携带 token 供后端 AiWebSocketAuthInterceptor 解析 userId
+    const token = getToken()
+    if (token) wsUrl += '?token=' + encodeURIComponent(token)
 
     console.log('WebSocket URL:', wsUrl)
     console.log('发送消息:', { conversationId, message })

@@ -10,6 +10,9 @@ public class MemorialResponse {
 
     private Long id;
 
+    /** 所属用户ID */
+    private Long userId;
+
     private String name;
 
     private LocalDate date;

@@ -13,6 +13,9 @@ public class ScheduleResponse {
     /** 日程ID */
     private Long id;
 
+    /** 所属用户ID */
+    private Long userId;
+
     /** 日程标题 */
     private String title;
 

@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 首页服务实现类
+ * 首页服务实现类（按当前登录用户聚合数据）
  */
 @Service
 public class HomeServiceImpl implements HomeService {
@@ -37,25 +37,25 @@ public class HomeServiceImpl implements HomeService {
     }
 
     @Override
-    public HomeResponse getHomeData() {
+    public HomeResponse getHomeData(Long userId) {
         HomeResponse response = new HomeResponse();
 
         // 获取问候语
         response.setGreeting(getGreeting());
 
-        // 获取用户信息
-        Profile profile = profileMapper.selectById(1L);
+        // 获取用户信息（profile.id即userId）
+        Profile profile = profileMapper.selectById(userId);
         if (profile != null) {
             response.setUsername(profile.getUsername());
         } else {
-            response.setUsername("小橘");
+            response.setUsername("朋友");
         }
 
         // 获取纪念日卡片（优先显示恋爱纪念日）
-        response.setAnniversary(getAnniversaryCard());
+        response.setAnniversary(getAnniversaryCard(userId));
 
         // 获取今日日程
-        response.setTodaySchedule(getTodaySchedule());
+        response.setTodaySchedule(getTodaySchedule(userId));
 
         return response;
     }
@@ -81,12 +81,12 @@ public class HomeServiceImpl implements HomeService {
     /**
      * 获取纪念日卡片（优先显示恋爱纪念日）
      */
-    private HomeResponse.MemorialCard getAnniversaryCard() {
-        List<Memorial> memorials = memorialMapper.selectByType("love");
-        
+    private HomeResponse.MemorialCard getAnniversaryCard(Long userId) {
+        List<Memorial> memorials = memorialMapper.selectByType(userId, "love");
+
         // 如果没有恋爱纪念日，找一个最近的重要纪念日
         if (memorials.isEmpty()) {
-            memorials = memorialMapper.selectUpcoming(LocalDate.now(), LocalDate.now().plusDays(30));
+            memorials = memorialMapper.selectUpcoming(userId, LocalDate.now(), LocalDate.now().plusDays(30));
         }
 
         if (!memorials.isEmpty()) {
@@ -112,18 +112,18 @@ public class HomeServiceImpl implements HomeService {
     /**
      * 获取今日日程
      */
-    private List<HomeResponse.ScheduleItem> getTodaySchedule() {
+    private List<HomeResponse.ScheduleItem> getTodaySchedule(Long userId) {
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
         LocalDateTime endOfDay = LocalDate.now().atTime(LocalTime.MAX);
 
-        List<Schedule> schedules = scheduleMapper.selectByDate(startOfDay, endOfDay);
+        List<Schedule> schedules = scheduleMapper.selectByDate(userId, startOfDay, endOfDay);
         List<HomeResponse.ScheduleItem> items = new ArrayList<>();
 
         for (Schedule schedule : schedules) {
             HomeResponse.ScheduleItem item = new HomeResponse.ScheduleItem();
             item.setId(schedule.getId());
             item.setName(schedule.getTitle());
-            
+
             // 格式化时间
             String startTime = schedule.getStartTime().format(DateTimeFormatter.ofPattern("HH:mm"));
             String endTime = schedule.getEndTime().format(DateTimeFormatter.ofPattern("HH:mm"));
@@ -136,7 +136,7 @@ public class HomeServiceImpl implements HomeService {
             // 设置类型标签
             String type = schedule.getType();
             item.setTag(getTypeLabel(type));
-            
+
             // 设置颜色
             String color = schedule.getColor();
             item.setLineColor(color);

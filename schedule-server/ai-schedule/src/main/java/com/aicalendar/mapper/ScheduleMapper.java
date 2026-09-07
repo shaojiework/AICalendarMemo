@@ -11,11 +11,15 @@ import java.util.List;
 @Mapper
 public interface ScheduleMapper extends BaseMapper<Schedule> {
 
-    List<Schedule> selectByDate(@Param("startOfDay") LocalDateTime startOfDay, @Param("endOfDay") LocalDateTime endOfDay);
+    /** 按日期查询某用户的日程 */
+    List<Schedule> selectByDate(@Param("userId") Long userId, @Param("startOfDay") LocalDateTime startOfDay, @Param("endOfDay") LocalDateTime endOfDay);
 
-    List<Schedule> selectByType(@Param("type") String type);
+    /** 按类型查询某用户的日程 */
+    List<Schedule> selectByType(@Param("userId") Long userId, @Param("type") String type);
 
-    List<Schedule> searchByKeyword(@Param("keyword") String keyword);
+    /** 按关键字搜索某用户的日程 */
+    List<Schedule> searchByKeyword(@Param("userId") Long userId, @Param("keyword") String keyword);
 
-    List<Schedule> selectByTimeRange(@Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
+    /** 按时间范围查询某用户的日程 */
+    List<Schedule> selectByTimeRange(@Param("userId") Long userId, @Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
 }

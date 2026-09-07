@@ -16,6 +16,8 @@ import java.time.temporal.ChronoUnit;
 
 /**
  * 用户信息服务实现类
+ * profile.id 即 userId，按当前登录用户查询；不存在时返回默认占位（不写库）
+ * 统计数据按 userId 在 schedule/memorial 表统计
  */
 @Service
 public class ProfileServiceImpl implements ProfileService {
@@ -24,8 +26,8 @@ public class ProfileServiceImpl implements ProfileService {
     private final ScheduleMapper scheduleMapper;
     private final MemorialMapper memorialMapper;
 
-    public ProfileServiceImpl(ProfileMapper profileMapper, 
-                             ScheduleMapper scheduleMapper, 
+    public ProfileServiceImpl(ProfileMapper profileMapper,
+                             ScheduleMapper scheduleMapper,
                              MemorialMapper memorialMapper) {
         this.profileMapper = profileMapper;
         this.scheduleMapper = scheduleMapper;
@@ -33,21 +35,33 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     @Override
-    public ProfileResponse getProfile() {
-        // 查询用户信息，如果不存在则创建默认用户
-        Profile profile = profileMapper.selectById(1L);
+    public ProfileResponse getProfile(Long userId) {
+        // 按当前登录用户ID查询profile
+        Profile profile = profileMapper.selectById(userId);
         if (profile == null) {
-            profile = createDefaultProfile();
+            profile = buildDefaultProfile(userId);
         }
 
-        return convertToResponse(profile);
+        return convertToResponse(profile, userId);
     }
 
     @Override
-    public ProfileResponse updateProfile(ProfileUpdateRequest request) {
-        Profile profile = profileMapper.selectById(1L);
+    public ProfileResponse updateProfile(Long userId, ProfileUpdateRequest request) {
+        Profile profile = profileMapper.selectById(userId);
         if (profile == null) {
-            profile = createDefaultProfile();
+            // 首次更新：插入新记录，id=userId
+            profile = buildDefaultProfile(userId);
+            if (request.getUsername() != null) {
+                profile.setUsername(request.getUsername());
+            }
+            if (request.getAvatar() != null) {
+                profile.setAvatar(request.getAvatar());
+            }
+            if (request.getDescription() != null) {
+                profile.setDescription(request.getDescription());
+            }
+            profileMapper.insert(profile);
+            return convertToResponse(profile, userId);
         }
 
         if (request.getUsername() != null) {
@@ -61,31 +75,25 @@ public class ProfileServiceImpl implements ProfileService {
         }
 
         profileMapper.updateById(profile);
-        return convertToResponse(profile);
+        return convertToResponse(profile, userId);
     }
 
     /**
-     * 创建默认用户信息
+     * 构建默认profile（仅内存，不写库）
      */
-    private Profile createDefaultProfile() {
+    private Profile buildDefaultProfile(Long userId) {
         Profile profile = new Profile();
-        profile.setId(1L);
-        profile.setUsername("小橘");
-        profile.setDescription("@xiao_ju · 生活记录者");
+        profile.setId(userId);
+        profile.setUsername("朋友");
+        profile.setDescription("生活记录者");
         profile.setRegisterDate(LocalDate.now());
-        
-        // 检查是否已存在记录
-        if (profileMapper.count() == 0) {
-            profileMapper.insert(profile);
-        }
-        
         return profile;
     }
 
     /**
-     * 转换为响应DTO，包含统计数据
+     * 转换为响应DTO，包含按userId统计的日程/纪念日数量
      */
-    private ProfileResponse convertToResponse(Profile profile) {
+    private ProfileResponse convertToResponse(Profile profile, Long userId) {
         ProfileResponse response = new ProfileResponse();
         BeanUtils.copyProperties(profile, response);
 
@@ -96,11 +104,15 @@ public class ProfileServiceImpl implements ProfileService {
             response.setDaysUsing((int) ChronoUnit.DAYS.between(registerDate, today) + 1);
         }
 
-        // 查询日程数量
-        response.setScheduleCount(scheduleMapper.selectCount(new LambdaQueryWrapper<>()).intValue());
+        // 按userId统计日程数量
+        LambdaQueryWrapper<com.aicalendar.entity.Schedule> scheduleWrapper = new LambdaQueryWrapper<>();
+        scheduleWrapper.eq(com.aicalendar.entity.Schedule::getUserId, userId);
+        response.setScheduleCount(scheduleMapper.selectCount(scheduleWrapper).intValue());
 
-        // 查询纪念日数量
-        response.setMemorialCount(memorialMapper.selectCount(new LambdaQueryWrapper<>()).intValue());
+        // 按userId统计纪念日数量
+        LambdaQueryWrapper<com.aicalendar.entity.Memorial> memorialWrapper = new LambdaQueryWrapper<>();
+        memorialWrapper.eq(com.aicalendar.entity.Memorial::getUserId, userId);
+        response.setMemorialCount(memorialMapper.selectCount(memorialWrapper).intValue());
 
         return response;
     }

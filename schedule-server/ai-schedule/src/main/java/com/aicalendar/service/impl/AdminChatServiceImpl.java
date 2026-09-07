@@ -34,7 +34,7 @@ public class AdminChatServiceImpl implements AdminChatService {
 
     @Override
     public List<AdminChatMessageResponse> getMessages(String conversationId) {
-        List<AiChat> chats = aiChatMapper.selectByConversationId(conversationId);
+        List<AiChat> chats = aiChatMapper.selectByConversationIdForAdmin(conversationId);
         return chats.stream().map(this::toResponse).toList();
     }
 

@@ -4,51 +4,34 @@ import com.aicalendar.dto.request.ScheduleCreateRequest;
 import com.aicalendar.dto.request.ScheduleUpdateRequest;
 import com.aicalendar.dto.response.ScheduleResponse;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 日程服务接口
+ * 日程服务接口（按当前登录用户隔离数据）
  */
 public interface ScheduleService {
 
-    /**
-     * 创建日程
-     */
-    ScheduleResponse createSchedule(ScheduleCreateRequest request);
+    /** 创建日程 */
+    ScheduleResponse createSchedule(Long userId, ScheduleCreateRequest request);
 
-    /**
-     * 根据ID获取日程
-     */
-    ScheduleResponse getScheduleById(Long id);
+    /** 根据ID获取日程（校验归属） */
+    ScheduleResponse getScheduleById(Long userId, Long id);
 
-    /**
-     * 获取所有日程
-     */
-    List<ScheduleResponse> getAllSchedules();
+    /** 获取某用户所有日程 */
+    List<ScheduleResponse> getAllSchedules(Long userId);
 
-    /**
-     * 按日期查询日程
-     */
-    List<ScheduleResponse> getSchedulesByDate(String date);
+    /** 按日期查询某用户日程 */
+    List<ScheduleResponse> getSchedulesByDate(Long userId, String date);
 
-    /**
-     * 按类型查询日程
-     */
-    List<ScheduleResponse> getSchedulesByType(String type);
+    /** 按类型查询某用户日程 */
+    List<ScheduleResponse> getSchedulesByType(Long userId, String type);
 
-    /**
-     * 搜索日程
-     */
-    List<ScheduleResponse> searchSchedules(String keyword);
+    /** 搜索某用户日程 */
+    List<ScheduleResponse> searchSchedules(Long userId, String keyword);
 
-    /**
-     * 更新日程
-     */
-    ScheduleResponse updateSchedule(Long id, ScheduleUpdateRequest request);
+    /** 更新日程（校验归属） */
+    ScheduleResponse updateSchedule(Long userId, Long id, ScheduleUpdateRequest request);
 
-    /**
-     * 删除日程
-     */
-    void deleteSchedule(Long id);
+    /** 删除日程（校验归属） */
+    void deleteSchedule(Long userId, Long id);
 }

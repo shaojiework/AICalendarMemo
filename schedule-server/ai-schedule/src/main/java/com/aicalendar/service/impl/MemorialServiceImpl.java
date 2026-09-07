@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * 纪念日服务实现类
+ * 纪念日服务实现类（按当前登录用户隔离数据，越权访问统一抛"纪念日不存在"避免暴露存在性）
  */
 @Service
 public class MemorialServiceImpl implements MemorialService {
@@ -29,10 +29,12 @@ public class MemorialServiceImpl implements MemorialService {
 
     @Override
     @Transactional
-    public MemorialResponse createMemorial(MemorialCreateRequest request) {
+    public MemorialResponse createMemorial(Long userId, MemorialCreateRequest request) {
         Memorial memorial = new Memorial();
         BeanUtils.copyProperties(request, memorial);
-        
+        // 绑定当前登录用户
+        memorial.setUserId(userId);
+
         if (memorial.getColor() == null) {
             memorial.setColor("#FF7B9C");
         }
@@ -48,58 +50,62 @@ public class MemorialServiceImpl implements MemorialService {
     }
 
     @Override
-    public MemorialResponse getMemorialById(Long id) {
+    public MemorialResponse getMemorialById(Long userId, Long id) {
         Memorial memorial = memorialMapper.selectById(id);
-        if (memorial == null) {
+        // 越权访问：不暴露他人数据存在性
+        if (memorial == null || !userId.equals(memorial.getUserId())) {
             throw new IllegalArgumentException("纪念日不存在");
         }
         return convertToResponse(memorial);
     }
 
     @Override
-    public List<MemorialResponse> getAllMemorials() {
-        List<Memorial> memorials = memorialMapper.selectList(null);
+    public List<MemorialResponse> getAllMemorials(Long userId) {
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Memorial> wrapper =
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+        wrapper.eq(Memorial::getUserId, userId).orderByAsc(Memorial::getDate);
+        List<Memorial> memorials = memorialMapper.selectList(wrapper);
         return memorials.stream().map(this::convertToResponse).collect(Collectors.toList());
     }
 
     @Override
-    public List<MemorialResponse> getMemorialsByType(String type) {
-        List<Memorial> memorials = memorialMapper.selectByType(type);
+    public List<MemorialResponse> getMemorialsByType(Long userId, String type) {
+        List<Memorial> memorials = memorialMapper.selectByType(userId, type);
         return memorials.stream().map(this::convertToResponse).collect(Collectors.toList());
     }
 
     @Override
-    public List<MemorialResponse> getUpcomingMemorials() {
+    public List<MemorialResponse> getUpcomingMemorials(Long userId) {
         // 查询未来30天内即将到来的纪念日，按日期正序
-        List<Memorial> memorials = memorialMapper.selectUpcoming(LocalDate.now(), LocalDate.now().plusDays(30));
+        List<Memorial> memorials = memorialMapper.selectUpcoming(userId, LocalDate.now(), LocalDate.now().plusDays(30));
         return memorials.stream().map(this::convertToResponse).collect(Collectors.toList());
     }
 
     @Override
-    public List<MemorialResponse> getBirthdays() {
-        List<Memorial> memorials = memorialMapper.selectByType("birthday");
+    public List<MemorialResponse> getBirthdays(Long userId) {
+        List<Memorial> memorials = memorialMapper.selectByType(userId, "birthday");
         return memorials.stream().map(this::convertToResponse).collect(Collectors.toList());
     }
 
     @Override
     @Transactional
-    public MemorialResponse updateMemorial(Long id, MemorialUpdateRequest request) {
+    public MemorialResponse updateMemorial(Long userId, Long id, MemorialUpdateRequest request) {
         Memorial memorial = memorialMapper.selectById(id);
-        if (memorial == null) {
+        if (memorial == null || !userId.equals(memorial.getUserId())) {
             throw new IllegalArgumentException("纪念日不存在");
         }
 
         BeanUtils.copyProperties(request, memorial);
         memorialMapper.updateById(memorial);
-        
+
         return convertToResponse(memorial);
     }
 
     @Override
     @Transactional
-    public void deleteMemorial(Long id) {
+    public void deleteMemorial(Long userId, Long id) {
         Memorial memorial = memorialMapper.selectById(id);
-        if (memorial == null) {
+        if (memorial == null || !userId.equals(memorial.getUserId())) {
             throw new IllegalArgumentException("纪念日不存在");
         }
         memorialMapper.deleteById(id);
@@ -111,10 +117,10 @@ public class MemorialServiceImpl implements MemorialService {
     private MemorialResponse convertToResponse(Memorial memorial) {
         MemorialResponse response = new MemorialResponse();
         BeanUtils.copyProperties(memorial, response);
-        
+
         LocalDate today = LocalDate.now();
         LocalDate memorialDate = memorial.getDate();
-        
+
         // 计算距离天数
         if (memorialDate.isBefore(today)) {
             // 日期已过，计算已过去/在一起的天数
@@ -123,7 +129,7 @@ public class MemorialServiceImpl implements MemorialService {
             // 日期未到，计算距离天数
             response.setDaysUntil((int) ChronoUnit.DAYS.between(today, memorialDate));
         }
-        
+
         return response;
     }
 }

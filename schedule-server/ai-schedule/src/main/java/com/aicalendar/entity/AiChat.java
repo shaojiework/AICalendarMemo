@@ -19,6 +19,10 @@ public class AiChat {
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
 
+    /** 所属用户ID */
+    @TableField("user_id")
+    private Long userId;
+
     /** 对话ID（同一对话共享） */
     @TableField("conversation_id")
     private String conversationId;

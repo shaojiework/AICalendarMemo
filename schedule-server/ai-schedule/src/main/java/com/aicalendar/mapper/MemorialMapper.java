@@ -11,11 +11,15 @@ import java.util.List;
 @Mapper
 public interface MemorialMapper extends BaseMapper<Memorial> {
 
-    List<Memorial> selectByType(@Param("type") String type);
+    /** 按类型查询某用户的纪念日 */
+    List<Memorial> selectByType(@Param("userId") Long userId, @Param("type") String type);
 
-    List<Memorial> selectByTypeNot(@Param("type") String type);
+    /** 查询某用户非指定类型的纪念日 */
+    List<Memorial> selectByTypeNot(@Param("userId") Long userId, @Param("type") String type);
 
-    List<Memorial> selectUpcoming(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+    /** 查询某用户指定日期范围内的纪念日 */
+    List<Memorial> selectUpcoming(@Param("userId") Long userId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
-    List<Memorial> selectByMonth(@Param("month") int month);
+    /** 按月份查询某用户的纪念日 */
+    List<Memorial> selectByMonth(@Param("userId") Long userId, @Param("month") int month);
 }

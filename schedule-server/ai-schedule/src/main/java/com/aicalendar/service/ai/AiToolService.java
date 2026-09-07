@@ -6,6 +6,7 @@ import com.aicalendar.dto.response.MemorialResponse;
 import com.aicalendar.dto.response.ScheduleResponse;
 import com.aicalendar.service.MemorialService;
 import com.aicalendar.service.ScheduleService;
+import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,8 @@ import java.util.List;
 /**
  * AI 工具服务
  * 提供 AI 可调用的业务方法，使用 @Tool 注解标记
+ * 通过 SpringAI ToolContext 机制接收当前登录用户ID（框架自动注入，跨线程可靠）
+ * 调用方在 ChatClient.prompt().toolContext(Map.of("userId", userId)) 处传入
  */
 @Slf4j
 @Service
@@ -26,11 +29,12 @@ public class AiToolService {
     @Tool(
         description = "查询指定日期的日程安排，返回该日期的所有日程列表，日期格式为 yyyy-MM-dd"
     )
-    public String getSchedulesByDate(String date) {
-        log.info("[工具调用] getSchedulesByDate(date={})", date);
-        
-        List<ScheduleResponse> schedules = scheduleService.getSchedulesByDate(date);
-        
+    public String getSchedulesByDate(String date, ToolContext toolContext) {
+        Long userId = extractUserId(toolContext);
+        log.info("[工具调用] getSchedulesByDate(userId={}, date={})", userId, date);
+
+        List<ScheduleResponse> schedules = scheduleService.getSchedulesByDate(userId, date);
+
         log.info("[工具调用] 查询结果：{} 条", schedules.size());
         if (schedules.isEmpty()) {
             return "该日期暂无日程安排";
@@ -51,8 +55,9 @@ public class AiToolService {
                 "type类型可选值：work(工作)、personal(个人)、meeting(会议)、normal(其他)，默认normal。" +
                 "description为可选的日程描述，color为可选的颜色（不传时按类型自动配色）"
     )
-    public String createSchedule(String title, String startTime, String endTime, String location, String type, String color, String description) {
-        log.info("[工具调用] createSchedule(title={}, startTime={}, endTime={})", title, startTime, endTime);
+    public String createSchedule(String title, String startTime, String endTime, String location, String type, String color, String description, ToolContext toolContext) {
+        Long userId = extractUserId(toolContext);
+        log.info("[工具调用] createSchedule(userId={}, title={}, startTime={}, endTime={})", userId, title, startTime, endTime);
 
         try {
             ScheduleCreateRequest request = new ScheduleCreateRequest();
@@ -69,7 +74,7 @@ public class AiToolService {
                     : getScheduleTypeColor(typeValue));
             request.setDescription(description != null ? description : "");
 
-            scheduleService.createSchedule(request);
+            scheduleService.createSchedule(userId, request);
             log.info("[工具调用] 日程创建成功");
             return "日程创建成功：" + title;
         } catch (Exception e) {
@@ -81,8 +86,9 @@ public class AiToolService {
     @Tool(
         description = "查询所有纪念日列表，返回所有纪念日的详细信息"
     )
-    public String getAllMemorials() {
-        List<MemorialResponse> memorials = memorialService.getAllMemorials();
+    public String getAllMemorials(ToolContext toolContext) {
+        Long userId = extractUserId(toolContext);
+        List<MemorialResponse> memorials = memorialService.getAllMemorials(userId);
 
         if (memorials.isEmpty()) {
             return "暂无纪念日记录";
@@ -101,8 +107,9 @@ public class AiToolService {
         description = "创建新的纪念日，需要提供名称、日期、类型等参数。日期格式为 yyyy-MM-dd。" +
                 "type类型可选值：normal(普通)、love(恋爱)、marriage(结婚)、birthday(生日)、other(其他)，默认normal"
     )
-    public String createMemorial(String name, String date, String type, String description, String color) {
-        log.info("[工具调用] createMemorial(name={}, date={}, color={})", name, date, color);
+    public String createMemorial(String name, String date, String type, String description, String color, ToolContext toolContext) {
+        Long userId = extractUserId(toolContext);
+        log.info("[工具调用] createMemorial(userId={}, name={}, date={}, color={})", userId, name, date, color);
 
         try {
             MemorialCreateRequest request = new MemorialCreateRequest();
@@ -117,7 +124,7 @@ public class AiToolService {
             request.setAvatar("");
             request.setIsYearly(1);
 
-            memorialService.createMemorial(request);
+            memorialService.createMemorial(userId, request);
             log.info("[工具调用] 纪念日创建成功");
             return "纪念日创建成功：" + name;
         } catch (Exception e) {
@@ -129,8 +136,9 @@ public class AiToolService {
     @Tool(
         description = "查询即将到来的纪念日，返回最近的纪念日列表"
     )
-    public String getUpcomingMemorials() {
-        List<MemorialResponse> memorials = memorialService.getUpcomingMemorials();
+    public String getUpcomingMemorials(ToolContext toolContext) {
+        Long userId = extractUserId(toolContext);
+        List<MemorialResponse> memorials = memorialService.getUpcomingMemorials(userId);
 
         if (memorials.isEmpty()) {
             return "暂无即将到来的纪念日";
@@ -157,6 +165,27 @@ public class AiToolService {
     )
     public String getCurrentTime() {
         return LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+    }
+
+    /**
+     * 从 ToolContext 中提取当前登录用户ID
+     * 调用方通过 ChatClient.prompt().toolContext(Map.of("userId", userId)) 传入
+     */
+    private Long extractUserId(ToolContext toolContext) {
+        if (toolContext == null || toolContext.getContext() == null) {
+            log.warn("[工具调用] ToolContext 为空，无法获取 userId");
+            throw new IllegalStateException("无法获取当前登录用户ID");
+        }
+        Object userIdVal = toolContext.getContext().get("userId");
+        if (userIdVal == null) {
+            log.warn("[工具调用] ToolContext 中未找到 userId");
+            throw new IllegalStateException("无法获取当前登录用户ID");
+        }
+        if (userIdVal instanceof Long) {
+            return (Long) userIdVal;
+        }
+        // 兼容 Integer 等数字类型
+        return ((Number) userIdVal).longValue();
     }
 
     /**
@@ -257,15 +286,15 @@ public class AiToolService {
         if (color == null || color.trim().isEmpty()) {
             return "#FF7B9C"; // 默认粉色，与手动创建一致
         }
-        
+
         // 去除首尾空格
         String normalizedColor = color.trim();
-        
+
         // 如果已经是十六进制颜色值，直接返回
         if (normalizedColor.startsWith("#") && normalizedColor.length() == 7) {
             return normalizedColor;
         }
-        
+
         // 中文颜色名称映射
         switch (normalizedColor) {
             case "红色":

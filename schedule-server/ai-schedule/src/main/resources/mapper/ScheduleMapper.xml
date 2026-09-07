@@ -3,26 +3,26 @@
 <mapper namespace="com.aicalendar.mapper.ScheduleMapper">
 
     <select id="selectByDate" resultType="com.aicalendar.entity.Schedule">
-        SELECT * FROM schedule 
-        WHERE start_time >= #{startOfDay} AND start_time &lt; #{endOfDay} 
+        SELECT * FROM schedule
+        WHERE user_id = #{userId} AND start_time >= #{startOfDay} AND start_time &lt; #{endOfDay}
         ORDER BY start_time ASC
     </select>
 
     <select id="selectByType" resultType="com.aicalendar.entity.Schedule">
-        SELECT * FROM schedule 
-        WHERE type = #{type} 
+        SELECT * FROM schedule
+        WHERE user_id = #{userId} AND type = #{type}
         ORDER BY start_time ASC
     </select>
 
     <select id="searchByKeyword" resultType="com.aicalendar.entity.Schedule">
-        SELECT * FROM schedule 
-        WHERE title LIKE CONCAT('%', #{keyword}, '%') 
+        SELECT * FROM schedule
+        WHERE user_id = #{userId} AND title LIKE CONCAT('%', #{keyword}, '%')
         ORDER BY start_time ASC
     </select>
 
     <select id="selectByTimeRange" resultType="com.aicalendar.entity.Schedule">
-        SELECT * FROM schedule 
-        WHERE start_time >= #{startTime} AND end_time &lt;= #{endTime} 
+        SELECT * FROM schedule
+        WHERE user_id = #{userId} AND start_time >= #{startTime} AND end_time &lt;= #{endTime}
         ORDER BY start_time ASC
     </select>
 

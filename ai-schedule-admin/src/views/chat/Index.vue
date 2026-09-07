@@ -1,67 +1,98 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import SearchForm from '@/components/SearchForm/index.vue'
+import { pageConversations, getMessages } from '@/api/chat'
 
-// 搜索区配置：用户账号/昵称
+// 搜索区配置：按对话ID关键字模糊搜索（后端聚合后无用户信息）
 const searchFields = [
-  { label: '用户', prop: 'keyword', component: 'el-input', placeholder: '请输入用户账号/昵称' }
+  { label: '对话ID', prop: 'keyword', component: 'el-input', placeholder: '请输入对话ID关键字' }
 ]
 
-// 会话列表静态数据（对接阶段替换为接口返回）
-const tableData = ref([
-  { id: 1, conversationId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', username: 'xiaoju', nickname: '小橘', messageCount: 24, lastTime: '2026-09-06 15:20:00' },
-  { id: 2, conversationId: 'b2c3d4e5-f6a7-8901-bcde-f12345678901', username: 'zhangsan', nickname: '张三', messageCount: 8, lastTime: '2026-09-06 11:05:00' },
-  { id: 3, conversationId: 'c3d4e5f6-a7b8-9012-cdef-123456789012', username: 'lisi', nickname: '李四', messageCount: 36, lastTime: '2026-09-05 21:43:00' }
-])
-
-const total = ref(210)
+// 会话列表与分页
+const tableData = ref([])
+const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
+const loading = ref(false)
+
+// 查询条件
+const queryParams = reactive({ keyword: '' })
 
 // 对话详情弹窗
 const detailVisible = ref(false)
 const currentConversation = ref({})
+const messageList = ref([])
+const detailLoading = ref(false)
 
-// 会话消息静态数据（对接阶段按 conversationId 查询 ai_chat）
-const messageList = ref([
-  { role: 'user', content: '帮我看看明天有什么日程' },
-  { role: 'assistant', content: '明天（9月7日）你有 1 个日程：\n10:00-11:00 产品周会，地点：会议室A。\n记得提前准备本周进度材料哦～' },
-  { role: 'user', content: '帮我记一下，9月10日下午3点去看牙医' },
-  { role: 'assistant', content: '已为你创建日程：\n📅 牙医复诊\n时间：9月10日 15:00\n地点：口腔医院\n到时候我会提醒你～' }
-])
+// 拉取会话列表
+const fetchList = async () => {
+  loading.value = true
+  try {
+    const params = {
+      keyword: queryParams.keyword || undefined,
+      page: page.value,
+      pageSize: pageSize.value
+    }
+    const res = await pageConversations(params)
+    tableData.value = res.list || []
+    total.value = res.total || 0
+  } catch {
+    // 错误提示已由拦截器处理
+  } finally {
+    loading.value = false
+  }
+}
 
-const handleSearch = () => {
+const handleSearch = (params) => {
+  Object.assign(queryParams, params)
+  page.value = 1
+  fetchList()
+}
+
+const handleReset = () => {
   page.value = 1
 }
 
-// 查看对话详情
-const handleDetail = (row) => {
+const handlePageChange = () => fetchList()
+const handlePageSizeChange = () => {
+  page.value = 1
+  fetchList()
+}
+
+// 查看对话详情：按 conversationId 拉取全部消息
+const handleDetail = async (row) => {
   currentConversation.value = row
   detailVisible.value = true
+  detailLoading.value = true
+  messageList.value = []
+  try {
+    const data = await getMessages(row.conversationId)
+    messageList.value = data || []
+  } catch {
+    // 错误提示已由拦截器处理
+  } finally {
+    detailLoading.value = false
+  }
 }
+
+onMounted(fetchList)
 </script>
 
 <template>
   <div class="page-container">
     <!-- 搜索区 -->
-    <SearchForm :fields="searchFields" @search="handleSearch" />
+    <SearchForm :fields="searchFields" @search="handleSearch" @reset="handleReset" />
 
     <!-- 表格区 -->
     <div class="table-card">
-      <el-table :data="tableData" border stripe>
-        <el-table-column prop="id" label="ID" width="70" align="center" />
-        <el-table-column label="会话ID" min-width="260">
+      <el-table v-loading="loading" :data="tableData" border stripe>
+        <el-table-column label="会话ID" min-width="280" align="center">
           <template #default="{ row }">
             <span class="conv-id">{{ row.conversationId }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="用户" min-width="140">
-          <template #default="{ row }">
-            {{ row.nickname }}（{{ row.username }}）
-          </template>
-        </el-table-column>
-        <el-table-column prop="messageCount" label="消息数" width="90" align="center" />
-        <el-table-column prop="lastTime" label="最后消息时间" min-width="170" />
+        <el-table-column prop="messageCount" label="消息数" width="100" align="center" />
+        <el-table-column prop="lastTime" label="最后消息时间" min-width="170" align="center" />
         <el-table-column label="操作" width="110" align="center" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleDetail(row)">查看对话</el-button>
@@ -78,6 +109,8 @@ const handleDetail = (row) => {
           :page-sizes="[10, 20, 50]"
           layout="total, sizes, prev, pager, next, jumper"
           background
+          @current-change="handlePageChange"
+          @size-change="handlePageSizeChange"
         />
       </div>
     </div>
@@ -85,10 +118,10 @@ const handleDetail = (row) => {
     <!-- 对话详情弹窗：消息气泡形式展示 -->
     <el-dialog v-model="detailVisible" title="对话详情" width="600px">
       <div class="conv-header">
-        <span>用户：{{ currentConversation.nickname }}（{{ currentConversation.username }}）</span>
+        <span>对话ID：{{ currentConversation.conversationId }}</span>
         <span>消息数：{{ currentConversation.messageCount }}</span>
       </div>
-      <div class="chat-box">
+      <div v-loading="detailLoading" class="chat-box">
         <div
           v-for="(msg, index) in messageList"
           :key="index"
@@ -97,6 +130,7 @@ const handleDetail = (row) => {
         >
           <div class="chat-bubble">{{ msg.content }}</div>
         </div>
+        <div v-if="!detailLoading && messageList.length === 0" class="empty-tip">暂无消息记录</div>
       </div>
       <template #footer>
         <el-button @click="detailVisible = false">关闭</el-button>
@@ -126,6 +160,7 @@ const handleDetail = (row) => {
     margin-bottom: 12px;
     padding-bottom: 12px;
     border-bottom: 1px solid var(--el-border-color-lighter);
+    word-break: break-all;
   }
 
   .chat-box {
@@ -134,6 +169,7 @@ const handleDetail = (row) => {
     padding: 8px;
     background-color: var(--el-bg-color-page);
     border-radius: 8px;
+    min-height: 200px;
   }
 
   .chat-item {
@@ -165,6 +201,12 @@ const handleDetail = (row) => {
     background-color: $sidebar-active-bg;
     color: #fff;
     border-top-right-radius: 2px;
+  }
+
+  .empty-tip {
+    text-align: center;
+    color: var(--el-text-color-placeholder);
+    padding: 40px 0;
   }
 }
 </style>

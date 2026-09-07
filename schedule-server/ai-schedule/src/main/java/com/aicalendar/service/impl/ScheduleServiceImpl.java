@@ -12,12 +12,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * 日程服务实现类
+ * 日程服务实现类（按当前登录用户隔离数据，越权访问统一抛"日程不存在"避免暴露存在性）
  */
 @Service
 public class ScheduleServiceImpl implements ScheduleService {
@@ -30,10 +29,12 @@ public class ScheduleServiceImpl implements ScheduleService {
 
     @Override
     @Transactional
-    public ScheduleResponse createSchedule(ScheduleCreateRequest request) {
+    public ScheduleResponse createSchedule(Long userId, ScheduleCreateRequest request) {
         Schedule schedule = new Schedule();
         BeanUtils.copyProperties(request, schedule);
-        
+        // 绑定当前登录用户
+        schedule.setUserId(userId);
+
         if (schedule.getColor() == null) {
             schedule.setColor("#3B82F6");
         }
@@ -46,59 +47,64 @@ public class ScheduleServiceImpl implements ScheduleService {
     }
 
     @Override
-    public ScheduleResponse getScheduleById(Long id) {
+    public ScheduleResponse getScheduleById(Long userId, Long id) {
         Schedule schedule = scheduleMapper.selectById(id);
-        if (schedule == null) {
+        // 越权访问：不暴露他人数据存在性
+        if (schedule == null || !userId.equals(schedule.getUserId())) {
             throw new IllegalArgumentException("日程不存在");
         }
         return convertToResponse(schedule);
     }
 
     @Override
-    public List<ScheduleResponse> getAllSchedules() {
-        List<Schedule> schedules = scheduleMapper.selectList(null);
+    public List<ScheduleResponse> getAllSchedules(Long userId) {
+        // 通过 BaseMapper 的 LambdaQueryWrapper 按用户查询
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Schedule> wrapper =
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+        wrapper.eq(Schedule::getUserId, userId).orderByAsc(Schedule::getStartTime);
+        List<Schedule> schedules = scheduleMapper.selectList(wrapper);
         return schedules.stream().map(this::convertToResponse).collect(Collectors.toList());
     }
 
     @Override
-    public List<ScheduleResponse> getSchedulesByDate(String date) {
+    public List<ScheduleResponse> getSchedulesByDate(Long userId, String date) {
         LocalDateTime startOfDay = DateUtil.getStartOfDay(date);
         LocalDateTime endOfDay = DateUtil.getEndOfDay(date);
-        List<Schedule> schedules = scheduleMapper.selectByDate(startOfDay, endOfDay);
+        List<Schedule> schedules = scheduleMapper.selectByDate(userId, startOfDay, endOfDay);
         return schedules.stream().map(this::convertToResponse).collect(Collectors.toList());
     }
 
     @Override
-    public List<ScheduleResponse> getSchedulesByType(String type) {
-        List<Schedule> schedules = scheduleMapper.selectByType(type);
+    public List<ScheduleResponse> getSchedulesByType(Long userId, String type) {
+        List<Schedule> schedules = scheduleMapper.selectByType(userId, type);
         return schedules.stream().map(this::convertToResponse).collect(Collectors.toList());
     }
 
     @Override
-    public List<ScheduleResponse> searchSchedules(String keyword) {
-        List<Schedule> schedules = scheduleMapper.searchByKeyword(keyword);
+    public List<ScheduleResponse> searchSchedules(Long userId, String keyword) {
+        List<Schedule> schedules = scheduleMapper.searchByKeyword(userId, keyword);
         return schedules.stream().map(this::convertToResponse).collect(Collectors.toList());
     }
 
     @Override
     @Transactional
-    public ScheduleResponse updateSchedule(Long id, ScheduleUpdateRequest request) {
+    public ScheduleResponse updateSchedule(Long userId, Long id, ScheduleUpdateRequest request) {
         Schedule schedule = scheduleMapper.selectById(id);
-        if (schedule == null) {
+        if (schedule == null || !userId.equals(schedule.getUserId())) {
             throw new IllegalArgumentException("日程不存在");
         }
 
         BeanUtils.copyProperties(request, schedule);
         scheduleMapper.updateById(schedule);
-        
+
         return convertToResponse(schedule);
     }
 
     @Override
     @Transactional
-    public void deleteSchedule(Long id) {
+    public void deleteSchedule(Long userId, Long id) {
         Schedule schedule = scheduleMapper.selectById(id);
-        if (schedule == null) {
+        if (schedule == null || !userId.equals(schedule.getUserId())) {
             throw new IllegalArgumentException("日程不存在");
         }
         scheduleMapper.deleteById(id);

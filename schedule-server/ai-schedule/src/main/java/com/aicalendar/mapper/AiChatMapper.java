@@ -20,24 +20,29 @@ public interface AiChatMapper {
     int insert(AiChat aiChat);
 
     /**
-     * 根据对话ID查询聊天记录
+     * 根据对话ID查询某用户的聊天记录
      */
-    List<AiChat> selectByConversationId(@Param("conversationId") String conversationId);
+    List<AiChat> selectByConversationId(@Param("userId") Long userId, @Param("conversationId") String conversationId);
 
     /**
-     * 查询最近的聊天记录
+     * 查询某用户最近的聊天记录
      */
-    List<AiChat> selectRecent(@Param("limit") int limit);
+    List<AiChat> selectRecent(@Param("userId") Long userId, @Param("limit") int limit);
 
     /**
-     * 删除对话记录
+     * 删除某用户的对话记录
      */
-    int deleteByConversationId(@Param("conversationId") String conversationId);
+    int deleteByConversationId(@Param("userId") Long userId, @Param("conversationId") String conversationId);
 
     /**
      * 后台：按对话ID分组统计会话列表（消息数、最后消息时间），支持按对话ID模糊搜索
      */
     List<AdminConversationResponse> selectConversationList(@Param("keyword") String keyword);
+
+    /**
+     * 后台：根据对话ID查询全部聊天记录（管理员可见所有用户数据，不做userId过滤）
+     */
+    List<AiChat> selectByConversationIdForAdmin(@Param("conversationId") String conversationId);
 
     /**
      * 后台：统计会话总数（按对话ID去重）

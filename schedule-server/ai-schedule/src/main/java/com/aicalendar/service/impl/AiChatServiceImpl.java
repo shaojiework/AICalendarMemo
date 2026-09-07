@@ -13,6 +13,7 @@ import java.util.List;
 /**
  * AI聊天服务实现类
  * 负责聊天记录的存取，AI调用由 AiWebSocketHandler 流式完成
+ * 所有操作绑定当前登录用户，跨用户对话ID访问返回空列表避免暴露存在性
  */
 @Service
 public class AiChatServiceImpl implements AiChatService {
@@ -22,8 +23,9 @@ public class AiChatServiceImpl implements AiChatService {
 
     @Override
     @Transactional
-    public void saveChat(String conversationId, String role, String content) {
+    public void saveChat(Long userId, String conversationId, String role, String content) {
         AiChat aiChat = new AiChat();
+        aiChat.setUserId(userId);
         aiChat.setConversationId(conversationId);
         aiChat.setRole(role);
         aiChat.setContent(content);
@@ -32,18 +34,18 @@ public class AiChatServiceImpl implements AiChatService {
     }
 
     @Override
-    public List<AiChat> getConversationHistory(String conversationId) {
-        return aiChatMapper.selectByConversationId(conversationId);
+    public List<AiChat> getConversationHistory(Long userId, String conversationId) {
+        return aiChatMapper.selectByConversationId(userId, conversationId);
     }
 
     @Override
-    public List<AiChat> getRecentChats(int limit) {
-        return aiChatMapper.selectRecent(limit);
+    public List<AiChat> getRecentChats(Long userId, int limit) {
+        return aiChatMapper.selectRecent(userId, limit);
     }
 
     @Override
     @Transactional
-    public void deleteConversation(String conversationId) {
-        aiChatMapper.deleteByConversationId(conversationId);
+    public void deleteConversation(Long userId, String conversationId) {
+        aiChatMapper.deleteByConversationId(userId, conversationId);
     }
 }

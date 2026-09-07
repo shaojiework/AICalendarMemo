@@ -19,6 +19,7 @@ import java.util.UUID;
 /**
  * AI聊天WebSocket处理器
  * 处理客户端WebSocket连接和消息，流式调用AI并逐段返回响应
+ * 握手阶段从 attributes 取 userId，保存对话与流式调用均绑定该用户
  */
 @Slf4j
 @Component
@@ -41,16 +42,25 @@ public class AiWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
+        // 握手阶段由 AiWebSocketAuthInterceptor 写入 userId
+        Long userId = (Long) session.getAttributes().get("userId");
+        if (userId == null) {
+            // 鉴权未通过理论上不会进入此方法，兜底关闭连接
+            log.warn("[WebSocket] 连接未携带 userId，关闭：{}", session.getId());
+            session.close(CloseStatus.POLICY_VIOLATION);
+            return;
+        }
         String conversationId = UUID.randomUUID().toString();
         sessionConversationMap.put(session.getId(), conversationId);
-        log.info("[WebSocket] 连接建立: {}, 对话ID: {}", session.getId(), conversationId);
+        log.info("[WebSocket] 连接建立: {}, userId={}, 对话ID: {}", session.getId(), userId, conversationId);
     }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         String payload = message.getPayload();
         String sessionId = session.getId();
-        log.info("[WebSocket] 收到消息 [{}]: {}", sessionId, payload);
+        Long userId = (Long) session.getAttributes().get("userId");
+        log.info("[WebSocket] 收到消息 [{}] userId={}: {}", sessionId, userId, payload);
 
         String conversationId = null;
         try {
@@ -64,13 +74,13 @@ public class AiWebSocketHandler extends TextWebSocketHandler {
                 conversationId = sessionConversationMap.get(sessionId);
             }
 
-            // 保存用户消息
-            aiChatService.saveChat(conversationId, "user", messageContent);
+            // 保存用户消息（绑定userId）
+            aiChatService.saveChat(userId, conversationId, "user", messageContent);
 
-            log.info("[AI] 开始流式调用, 对话ID: {}", conversationId);
+            log.info("[AI] 开始流式调用, userId={}, 对话ID: {}", userId, conversationId);
 
-            // 流式调用AI并逐段推送
-            callAiStream(session, conversationId, messageContent);
+            // 流式调用AI并逐段推送（绑定userId上下文）
+            callAiStream(session, userId, conversationId, messageContent);
 
         } catch (Exception e) {
             log.error("[WebSocket] 处理消息出错 [{}]", sessionId, e);
@@ -82,11 +92,13 @@ public class AiWebSocketHandler extends TextWebSocketHandler {
     /**
      * 流式调用AI服务
      * 订阅AI流式响应，每段内容即时推送前端（chunk帧），结束后保存完整回复并发送end帧
+     * 通过 SpringAI 的 ToolContext 机制把 userId 传给 @Tool 方法，跨线程可靠
      */
-    private void callAiStream(WebSocketSession session, String conversationId, String userMessage) {
-        // ChatClient 已通过 defaultTools 绑定 AiToolService，流式调用时 @Tool 方法同样生效
+    private void callAiStream(WebSocketSession session, Long userId, String conversationId, String userMessage) {
         Flux<String> stream = chatClient.prompt()
                 .user(userMessage)
+                // 将当前登录用户ID注入工具调用上下文，AiToolService 通过 toolContext.getContext().get("userId") 取出
+                .toolContext(java.util.Map.of("userId", userId))
                 .stream()
                 .content();
 
@@ -113,8 +125,8 @@ public class AiWebSocketHandler extends TextWebSocketHandler {
                         response = "抱歉，未能获取到响应";
                         sendFrame(session, "chunk", response, conversationId);
                     }
-                    aiChatService.saveChat(conversationId, "assistant", response);
-                    log.info("[AI] 流式响应完成, 长度: {}", response.length());
+                    aiChatService.saveChat(userId, conversationId, "assistant", response);
+                    log.info("[AI] 流式响应完成, userId={}, 长度: {}", userId, response.length());
                     sendFrame(session, "end", response, conversationId);
                 }
         );

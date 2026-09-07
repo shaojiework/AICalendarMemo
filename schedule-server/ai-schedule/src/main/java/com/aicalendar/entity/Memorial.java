@@ -20,6 +20,10 @@ public class Memorial {
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
 
+    /** 所属用户ID */
+    @TableField("user_id")
+    private Long userId;
+
     /** 纪念日名称 */
     @TableField("name")
     private String name;

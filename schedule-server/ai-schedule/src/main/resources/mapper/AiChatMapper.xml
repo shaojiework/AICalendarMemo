@@ -5,6 +5,7 @@
 
     <resultMap id="AiChatResult" type="com.aicalendar.entity.AiChat">
         <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
         <result property="conversationId" column="conversation_id"/>
         <result property="role" column="role"/>
         <result property="content" column="content"/>
@@ -12,24 +13,25 @@
     </resultMap>
 
     <insert id="insert" parameterType="com.aicalendar.entity.AiChat">
-        INSERT INTO ai_chat (conversation_id, role, content, created_at)
-        VALUES (#{conversationId}, #{role}, #{content}, #{createdAt})
+        INSERT INTO ai_chat (user_id, conversation_id, role, content, created_at)
+        VALUES (#{userId}, #{conversationId}, #{role}, #{content}, #{createdAt})
     </insert>
 
     <select id="selectByConversationId" resultMap="AiChatResult">
-        SELECT * FROM ai_chat 
-        WHERE conversation_id = #{conversationId}
+        SELECT * FROM ai_chat
+        WHERE user_id = #{userId} AND conversation_id = #{conversationId}
         ORDER BY created_at ASC
     </select>
 
     <select id="selectRecent" resultMap="AiChatResult">
-        SELECT * FROM ai_chat 
+        SELECT * FROM ai_chat
+        WHERE user_id = #{userId}
         ORDER BY created_at DESC
         LIMIT #{limit}
     </select>
 
     <delete id="deleteByConversationId">
-        DELETE FROM ai_chat WHERE conversation_id = #{conversationId}
+        DELETE FROM ai_chat WHERE user_id = #{userId} AND conversation_id = #{conversationId}
     </delete>
 
     <!-- 后台：会话列表，按对话ID分组聚合，支持按对话ID模糊搜索 -->
@@ -45,6 +47,13 @@
         </where>
         GROUP BY conversation_id
         ORDER BY lastTime DESC
+    </select>
+
+    <!-- 后台：按对话ID查询全部消息（管理员可见所有用户数据） -->
+    <select id="selectByConversationIdForAdmin" resultMap="AiChatResult">
+        SELECT * FROM ai_chat
+        WHERE conversation_id = #{conversationId}
+        ORDER BY created_at ASC
     </select>
 
     <!-- 后台：会话总数（按对话ID去重） -->

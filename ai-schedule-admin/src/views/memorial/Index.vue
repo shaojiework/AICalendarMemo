@@ -1,7 +1,8 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import SearchForm from '@/components/SearchForm/index.vue'
+import { pageMemorials, getMemorialById, deleteMemorial } from '@/api/memorial'
 
 // 搜索区配置：名称关键字 + 类型
 const searchFields = [
@@ -29,58 +30,104 @@ const typeMap = {
   other: { label: '其他', color: '#909399' }
 }
 
-// 纪念日列表静态数据（对接阶段替换为接口返回）
-const tableData = ref([
-  { id: 1, name: '和小橘在一起', username: 'xiaoju', type: 'love', date: '2023-05-20', isYearly: 1, description: '恋爱纪念日' },
-  { id: 2, name: '妈妈生日', username: 'zhangsan', type: 'birthday', date: '1970-03-08', isYearly: 1, description: '' },
-  { id: 3, name: '结婚纪念日', username: 'lisi', type: 'marriage', date: '2020-10-01', isYearly: 1, description: '婚礼当天' },
-  { id: 4, name: '项目上线', username: 'wangwu', type: 'normal', date: '2026-09-20', isYearly: 0, description: '一期版本发布' }
-])
-
-const total = ref(56)
+// 列表与分页
+const tableData = ref([])
+const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
+const loading = ref(false)
+
+// 查询条件
+const queryParams = reactive({ keyword: '', type: '' })
 
 // 详情弹窗
 const detailVisible = ref(false)
 const detailData = ref({})
+const detailLoading = ref(false)
 
-const handleSearch = () => {
+// 拉取列表数据
+const fetchList = async () => {
+  loading.value = true
+  try {
+    const params = {
+      keyword: queryParams.keyword || undefined,
+      type: queryParams.type || undefined,
+      page: page.value,
+      pageSize: pageSize.value
+    }
+    const res = await pageMemorials(params)
+    tableData.value = res.list || []
+    total.value = res.total || 0
+  } catch {
+    // 错误提示已由拦截器处理
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleSearch = (params) => {
+  Object.assign(queryParams, params)
+  page.value = 1
+  fetchList()
+}
+
+const handleReset = () => {
   page.value = 1
 }
 
-// 查看详情
-const handleDetail = (row) => {
-  detailData.value = row
+const handlePageChange = () => fetchList()
+const handlePageSizeChange = () => {
+  page.value = 1
+  fetchList()
+}
+
+// 查看详情：调详情接口
+const handleDetail = async (row) => {
+  detailLoading.value = true
   detailVisible.value = true
+  try {
+    const data = await getMemorialById(row.id)
+    detailData.value = data
+  } catch {
+    // 错误提示已由拦截器处理
+  } finally {
+    detailLoading.value = false
+  }
 }
 
 // 删除纪念日：二次确认
-const handleDelete = (row) => {
-  ElMessageBox.confirm(`确定要删除纪念日「${row.name}」吗？删除后不可恢复。`, '删除确认', {
-    confirmButtonText: '确定删除',
-    cancelButtonText: '取消',
-    type: 'error'
-  })
-    .then(() => {
-      tableData.value = tableData.value.filter((item) => item.id !== row.id)
-      ElMessage.success('删除成功')
+const handleDelete = async (row) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除纪念日「${row.name}」吗？删除后不可恢复。`, '删除确认', {
+      confirmButtonText: '确定删除',
+      cancelButtonText: '取消',
+      type: 'error'
     })
-    .catch(() => {})
+  } catch {
+    return
+  }
+  try {
+    await deleteMemorial(row.id)
+    ElMessage.success('删除成功')
+    fetchList()
+  } catch {
+    // 错误提示已由拦截器处理
+  }
 }
+
+onMounted(fetchList)
 </script>
 
 <template>
   <div class="page-container">
     <!-- 搜索区 -->
-    <SearchForm :fields="searchFields" @search="handleSearch" />
+    <SearchForm :fields="searchFields" @search="handleSearch" @reset="handleReset" />
 
     <!-- 表格区 -->
     <div class="table-card">
-      <el-table :data="tableData" border stripe>
-        <el-table-column prop="id" label="ID" width="70" align="center" />
-        <el-table-column prop="name" label="纪念日名称" min-width="140" />
-        <el-table-column prop="username" label="所属用户" min-width="110" />
+      <el-table v-loading="loading" :data="tableData" border stripe>
+        <el-table-column type="index" label="序号" width="70" align="center" />
+        <el-table-column prop="name" label="纪念日名称" min-width="140" align="center" />
         <el-table-column label="类型" width="90" align="center">
           <template #default="{ row }">
             <el-tag :color="typeMap[row.type]?.color" style="color: #fff; border: none">
@@ -88,7 +135,7 @@ const handleDelete = (row) => {
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="date" label="日期" min-width="120" />
+        <el-table-column prop="date" label="日期" min-width="120" align="center" />
         <el-table-column label="每年重复" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="row.isYearly === 1 ? 'success' : 'info'">
@@ -113,15 +160,16 @@ const handleDelete = (row) => {
           :page-sizes="[10, 20, 50]"
           layout="total, sizes, prev, pager, next, jumper"
           background
+          @current-change="handlePageChange"
+          @size-change="handlePageSizeChange"
         />
       </div>
     </div>
 
     <!-- 纪念日详情弹窗 -->
     <el-dialog v-model="detailVisible" title="纪念日详情" width="480px">
-      <el-descriptions :column="1" border>
+      <el-descriptions v-loading="detailLoading" :column="1" border>
         <el-descriptions-item label="名称">{{ detailData.name }}</el-descriptions-item>
-        <el-descriptions-item label="所属用户">{{ detailData.username }}</el-descriptions-item>
         <el-descriptions-item label="类型">{{ typeMap[detailData.type]?.label }}</el-descriptions-item>
         <el-descriptions-item label="日期">{{ detailData.date }}</el-descriptions-item>
         <el-descriptions-item label="每年重复">{{ detailData.isYearly === 1 ? '是' : '否' }}</el-descriptions-item>

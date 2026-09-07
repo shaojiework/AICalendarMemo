@@ -3,23 +3,18 @@ import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/store/auth'
-
 const router = useRouter()
 const authStore = useAuthStore()
-
 const loginFormRef = ref(null)
 const loading = ref(false)
-
 const loginForm = reactive({
   username: '',
   password: ''
 })
-
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
-
 // 登录提交
 const handleLogin = () => {
   loginFormRef.value.validate(async (valid) => {
@@ -29,8 +24,8 @@ const handleLogin = () => {
       await authStore.login(loginForm)
       ElMessage.success('登录成功')
       router.push('/')
-    } catch {
-      // 错误已由拦截器提示
+    } catch (err) {
+      ElMessage.error(err?.message || '登录失败，请检查账号密码')
     } finally {
       loading.value = false
     }
@@ -40,6 +35,10 @@ const handleLogin = () => {
 
 <template>
   <div class="login-container">
+    <!-- 背景装饰光晕，纯视觉，不干扰表单 -->
+    <div class="decor decor-1"></div>
+    <div class="decor decor-2"></div>
+
     <div class="login-card">
       <div class="login-header">
         <h2>AI 日历备忘录</h2>
@@ -89,29 +88,57 @@ const handleLogin = () => {
   align-items: center;
   justify-content: center;
   height: 100vh;
-  background: linear-gradient(135deg, #09172d 0%, #0c2444 100%);
+  // 径向渐变叠加，解决背景单调问题
+  background: radial-gradient(circle at 20% 20%, rgba(24, 68, 124, 0.4), transparent 55%),
+  linear-gradient(135deg, #09172d 0%, #0c2444 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+// 页面角落模糊光晕装饰
+.decor {
+  position: fixed;
+  border-radius: 50%;
+  background: rgba(64, 158, 255, 0.08);
+  filter: blur(60px);
+  z-index: 0;
+}
+.decor-1 {
+  width: 260px;
+  height: 260px;
+  top: 10%;
+  left: 8%;
+}
+.decor-2 {
+  width: 320px;
+  height: 320px;
+  bottom: 15%;
+  right: 10%;
 }
 
 .login-card {
   width: 380px;
+  min-height: 400px;
   padding: 40px 36px;
   background-color: $card-bg;
   border: 1px solid $navbar-border;
-  border-radius: 8px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  // 卡片双层阴影
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 60px rgba(64, 158, 255, 0.08);
+  position: relative;
+  z-index: 1;
 }
 
 .login-header {
   text-align: center;
-  margin-bottom: 32px;
-
+  margin-bottom: 62px;
   h2 {
     font-size: 22px;
     font-weight: 700;
     color: $text-primary;
     margin: 0 0 8px;
+    text-shadow: 0 0 12px rgba(64, 158, 255, 0.15);
   }
-
   p {
     font-size: 13px;
     color: $text-secondary;
@@ -121,5 +148,10 @@ const handleLogin = () => {
 
 .login-btn {
   width: 100%;
+  height: 44px;
+  transition: all 0.24s ease;
+  &:hover {
+    box-shadow: 0 0 14px rgba(64, 158, 255, 0.35);
+  }
 }
 </style>

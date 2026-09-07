@@ -3,26 +3,26 @@
 <mapper namespace="com.aicalendar.mapper.MemorialMapper">
 
     <select id="selectByType" resultType="com.aicalendar.entity.Memorial">
-        SELECT * FROM memorial 
-        WHERE type = #{type} 
+        SELECT * FROM memorial
+        WHERE user_id = #{userId} AND type = #{type}
         ORDER BY date ASC
     </select>
 
     <select id="selectByTypeNot" resultType="com.aicalendar.entity.Memorial">
-        SELECT * FROM memorial 
-        WHERE type != #{type} 
+        SELECT * FROM memorial
+        WHERE user_id = #{userId} AND type != #{type}
         ORDER BY date ASC
     </select>
 
     <select id="selectUpcoming" resultType="com.aicalendar.entity.Memorial">
-        SELECT * FROM memorial 
-        WHERE date >= #{startDate} AND date &lt;= #{endDate} 
+        SELECT * FROM memorial
+        WHERE user_id = #{userId} AND date >= #{startDate} AND date &lt;= #{endDate}
         ORDER BY date ASC
     </select>
 
     <select id="selectByMonth" resultType="com.aicalendar.entity.Memorial">
-        SELECT * FROM memorial 
-        WHERE MONTH(date) = #{month} 
+        SELECT * FROM memorial
+        WHERE user_id = #{userId} AND MONTH(date) = #{month}
         ORDER BY DAY(date) ASC
     </select>
 

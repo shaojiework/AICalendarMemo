@@ -1,7 +1,8 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import SearchForm from '@/components/SearchForm/index.vue'
+import { pageUsers, updateUserStatus } from '@/api/user'
 
 // 搜索区配置（账号/昵称关键字 + 状态筛选）
 const searchFields = [
@@ -17,61 +18,102 @@ const searchFields = [
   }
 ]
 
-// 用户列表静态数据（对接阶段替换为接口返回，字段与后端 UserResponse 对齐）
-const tableData = ref([
-  { id: 1, username: 'admin', nickname: '管理员', phone: '13800000000', role: 'ADMIN', status: 1, createdAt: '2026-09-01 10:00:00' },
-  { id: 2, username: 'xiaoju', nickname: '小橘', phone: '13812345678', role: 'USER', status: 1, createdAt: '2026-09-02 14:23:00' },
-  { id: 3, username: 'zhangsan', nickname: '张三', phone: '13987654321', role: 'USER', status: 1, createdAt: '2026-09-03 09:12:00' },
-  { id: 4, username: 'lisi', nickname: '李四', phone: '13711112222', role: 'USER', status: 0, createdAt: '2026-09-04 16:45:00' },
-  { id: 5, username: 'wangwu', nickname: '王五', phone: '13633334444', role: 'USER', status: 1, createdAt: '2026-09-05 11:30:00' }
-])
-
-// 查询条件（搜索组件回传）
-const queryParams = ref({ keyword: '', status: '' })
-const total = ref(86)
+// 用户列表与分页
+const tableData = ref([])
+const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
+const loading = ref(false)
 
-// 查询回调（静态阶段仅记录条件，对接阶段调用列表接口）
+// 查询条件（搜索组件回传）
+const queryParams = reactive({ keyword: '', status: '' })
+
+// 拉取列表数据（每次进入页面均重新请求）
+const fetchList = async () => {
+  loading.value = true
+  try {
+    const params = {
+      keyword: queryParams.keyword || undefined,
+      status: queryParams.status !== '' ? queryParams.status : undefined,
+      page: page.value,
+      pageSize: pageSize.value
+    }
+    const res = await pageUsers(params)
+    tableData.value = res.list || []
+    total.value = res.total || 0
+  } catch (e) {
+    // 错误提示已由 axios 拦截器统一处理
+  } finally {
+    loading.value = false
+  }
+}
+
+// 查询回调：重置页码后拉取
 const handleSearch = (params) => {
-  queryParams.value = params
+  Object.assign(queryParams, params)
+  page.value = 1
+  fetchList()
+}
+
+// 重置回调：搜索组件已清空条件并触发 search，无需额外处理
+const handleReset = () => {
   page.value = 1
 }
 
-// 启用/禁用切换：二次确认
-const handleToggleStatus = (row) => {
+// 分页变化
+const handlePageChange = () => fetchList()
+const handlePageSizeChange = () => {
+  page.value = 1
+  fetchList()
+}
+
+// 启用/禁用切换：二次确认后调接口
+const handleToggleStatus = async (row) => {
   const action = row.status === 1 ? '禁用' : '启用'
-  ElMessageBox.confirm(`确定要${action}用户「${row.nickname}」吗？`, '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  })
-    .then(() => {
-      row.status = row.status === 1 ? 0 : 1
-      ElMessage.success(`${action}成功`)
+  try {
+    await ElMessageBox.confirm(`确定要${action}用户「${row.nickname || row.username}」吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
     })
-    .catch(() => {})
+  } catch {
+    return
+  }
+  // 调接口切换状态；目标状态 = 当前状态取反
+  const targetStatus = row.status === 1 ? 0 : 1
+  try {
+    await updateUserStatus(row.id, targetStatus)
+    ElMessage.success(`${action}成功`)
+    // 刷新列表
+    fetchList()
+  } catch {
+    // 错误提示已由拦截器处理
+  }
 }
 
 // 角色文案
 const roleText = (role) => (role === 'ADMIN' ? '管理员' : '普通用户')
+
+// 首次进入页面拉取数据
+onMounted(fetchList)
 </script>
 
 <template>
   <div class="page-container">
     <!-- 搜索区 -->
-    <SearchForm :fields="searchFields" @search="handleSearch" />
+    <SearchForm :fields="searchFields" @search="handleSearch" @reset="handleReset" />
 
     <!-- 表格区 -->
     <div class="table-card">
-      <el-table :data="tableData" border stripe>
-        <el-table-column prop="id" label="ID" width="70" align="center" />
-        <el-table-column prop="username" label="账号" min-width="120" />
-        <el-table-column prop="nickname" label="昵称" min-width="120" />
-        <el-table-column prop="phone" label="手机号" min-width="130" />
+      <el-table v-loading="loading" :data="tableData" border stripe>
+        <el-table-column type="index" label="序号" width="70" align="center" />
+        <el-table-column prop="username" label="账号" min-width="120" align="center" />
+        <el-table-column prop="nickname" label="昵称" min-width="120" align="center" />
+        <el-table-column prop="phone" label="手机号" min-width="130" align="center" />
+        <el-table-column prop="phone" label="手机号" min-width="130" align="center" />
         <el-table-column label="角色" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.role === 'ADMIN' ? 'danger' : 'info'">{{ roleText(row.role) }}</el-tag>
+            <el-tag :type="row.role === 'ADMIN' ? 'danger' : 'primary'">{{ roleText(row.role) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="状态" width="90" align="center">
@@ -105,6 +147,8 @@ const roleText = (role) => (role === 'ADMIN' ? '管理员' : '普通用户')
           :page-sizes="[10, 20, 50]"
           layout="total, sizes, prev, pager, next, jumper"
           background
+          @current-change="handlePageChange"
+          @size-change="handlePageSizeChange"
         />
       </div>
     </div>

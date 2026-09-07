@@ -19,6 +19,10 @@ public class Schedule {
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
 
+    /** 所属用户ID */
+    @TableField("user_id")
+    private Long userId;
+
     /** 日程标题 */
     @TableField("title")
     private String title;
