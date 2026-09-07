@@ -29,6 +29,12 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true
+      },
+      // WebSocket 代理：开发环境 ws://localhost:5173/ws/ai/chat → http://localhost:8080/ws/ai/chat
+      '/ws': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        ws: true
       }
     }
   }

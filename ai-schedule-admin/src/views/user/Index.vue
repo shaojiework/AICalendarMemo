@@ -110,7 +110,6 @@ onMounted(fetchList)
         <el-table-column prop="username" label="账号" min-width="120" align="center" />
         <el-table-column prop="nickname" label="昵称" min-width="120" align="center" />
         <el-table-column prop="phone" label="手机号" min-width="130" align="center" />
-        <el-table-column prop="phone" label="手机号" min-width="130" align="center" />
         <el-table-column label="角色" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="row.role === 'ADMIN' ? 'danger' : 'primary'">{{ roleText(row.role) }}</el-tag>
@@ -124,7 +123,7 @@ onMounted(fetchList)
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="注册时间" min-width="170" />
+        <el-table-column prop="createdAt" label="注册时间" min-width="170" align="center"/>
         <el-table-column label="操作" width="110" align="center" fixed="right">
           <template #default="{ row }">
             <el-button

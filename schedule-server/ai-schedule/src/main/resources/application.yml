@@ -13,6 +13,13 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+  # Jackson 全局日期格式：LocalDateTime 统一输出 yyyy-MM-dd HH:mm:ss，
+  # LocalDate 统一输出 yyyy-MM-dd，前端 el-table 直接渲染友好格式，无需额外格式化
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    serialization:
+      write-dates-as-timestamps: false
   ai:
     openai:
       api-key: ${SILICONFLOW_API_KEY}

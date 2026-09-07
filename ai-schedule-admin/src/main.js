@@ -11,6 +11,7 @@ import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 
 import App from './App.vue'
 import router from './router'
+import directives from './directives'
 import './styles/index.scss'
 
 const app = createApp(App)
@@ -23,5 +24,7 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
 app.use(createPinia())
 app.use(router)
 app.use(ElementPlus, { locale: zhCn })
+// 注册全局自定义指令（v-draggable 等）
+app.use(directives)
 
 app.mount('#app')

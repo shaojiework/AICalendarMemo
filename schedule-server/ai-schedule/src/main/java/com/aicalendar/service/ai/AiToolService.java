@@ -2,8 +2,12 @@ package com.aicalendar.service.ai;
 
 import com.aicalendar.dto.request.MemorialCreateRequest;
 import com.aicalendar.dto.request.ScheduleCreateRequest;
+import com.aicalendar.dto.response.AdminMemorialResponse;
+import com.aicalendar.dto.response.AdminScheduleResponse;
 import com.aicalendar.dto.response.MemorialResponse;
 import com.aicalendar.dto.response.ScheduleResponse;
+import com.aicalendar.service.AdminMemorialService;
+import com.aicalendar.service.AdminScheduleService;
 import com.aicalendar.service.MemorialService;
 import com.aicalendar.service.ScheduleService;
 import org.springframework.ai.chat.model.ToolContext;
@@ -27,27 +31,32 @@ import java.util.List;
 public class AiToolService {
 
     @Tool(
-        description = "查询指定日期的日程安排，返回该日期的所有日程列表，日期格式为 yyyy-MM-dd"
+        description = "查询指定日期的日程安排，返回该日期的所有日程列表。日期格式示例：2026-09-08、2026/09/08 均可"
     )
     public String getSchedulesByDate(String date, ToolContext toolContext) {
         Long userId = extractUserId(toolContext);
-        log.info("[工具调用] getSchedulesByDate(userId={}, date={})", userId, date);
+        try {
+            String normalizedDate = normalizeDate(date);
+            log.info("[工具调用] getSchedulesByDate(userId={}, date={})", userId, normalizedDate);
 
-        List<ScheduleResponse> schedules = scheduleService.getSchedulesByDate(userId, date);
+            List<ScheduleResponse> schedules = scheduleService.getSchedulesByDate(userId, normalizedDate);
 
-        log.info("[工具调用] 查询结果：{} 条", schedules.size());
-        if (schedules.isEmpty()) {
-            return "该日期暂无日程安排";
+            if (schedules.isEmpty()) {
+                return normalizedDate + " 暂无日程安排";
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.append(normalizedDate).append(" 共有 ").append(schedules.size()).append(" 个日程：\n");
+            for (ScheduleResponse schedule : schedules) {
+                sb.append("- ").append(schedule.getTitle())
+                  .append("（").append(schedule.getStartTime())
+                  .append(" - ").append(schedule.getEndTime()).append("）\n");
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            log.error("[工具调用] getSchedulesByDate 失败: {}", e.getMessage());
+            return "查询日程失败：" + e.getMessage();
         }
-
-        StringBuilder sb = new StringBuilder();
-        sb.append("该日期共有 ").append(schedules.size()).append(" 个日程：\n");
-        for (ScheduleResponse schedule : schedules) {
-            sb.append("- ").append(schedule.getTitle())
-              .append("（").append(schedule.getStartTime())
-              .append(" - ").append(schedule.getEndTime()).append("）\n");
-        }
-        return sb.toString();
     }
 
     @Tool(
@@ -167,9 +176,82 @@ public class AiToolService {
         return LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
 
+    // ================= 管理员视角工具：仅 ADMIN 角色可调用，查询全部用户的日程与纪念日 =================
+
+    @Tool(
+        description = "管理员视角：查询指定日期全部用户的日程安排（不限用户），返回该日期所有用户的日程列表。" +
+                "仅管理员可用。日期格式示例：2026-09-08、2026/09/08 均可"
+    )
+    public String adminGetAllSchedulesByDate(String date, ToolContext toolContext) {
+        String role = extractRole(toolContext);
+        if (!"ADMIN".equals(role)) {
+            return "无权限：该工具仅管理员可用";
+        }
+        Long userId = extractUserId(toolContext);
+        try {
+            String normalizedDate = normalizeDate(date);
+            log.info("[工具调用] adminGetAllSchedulesByDate(调用者userId={}, date={})", userId, normalizedDate);
+
+            var page = adminScheduleService.pageSchedules(null, null, normalizedDate, 1, 200);
+            List<AdminScheduleResponse> schedules = page.getList();
+
+            if (schedules.isEmpty()) {
+                return normalizedDate + " 全部用户暂无日程安排";
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.append(normalizedDate).append(" 全部用户共有 ").append(schedules.size()).append(" 个日程：\n");
+            for (AdminScheduleResponse s : schedules) {
+                sb.append("- [ID=").append(s.getId()).append("] ")
+                  .append(s.getTitle())
+                  .append("（").append(s.getStartTime())
+                  .append(" - ").append(s.getEndTime()).append("）");
+                if (s.getLocation() != null && !s.getLocation().isEmpty()) {
+                    sb.append(" @ ").append(s.getLocation());
+                }
+                sb.append("\n");
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            log.error("[工具调用] adminGetAllSchedulesByDate 失败: {}", e.getMessage());
+            return "查询日程失败：" + e.getMessage();
+        }
+    }
+
+    @Tool(
+        description = "管理员视角：查询全部用户的纪念日列表（不限用户），返回所有纪念日信息。" +
+                "仅管理员可用"
+    )
+    public String adminGetAllMemorials(ToolContext toolContext) {
+        String role = extractRole(toolContext);
+        if (!"ADMIN".equals(role)) {
+            return "无权限：该工具仅管理员可用";
+        }
+        Long userId = extractUserId(toolContext);
+        log.info("[工具调用] adminGetAllMemorials(调用者userId={})", userId);
+
+        var page = adminMemorialService.pageMemorials(null, null, 1, 200);
+        List<AdminMemorialResponse> memorials = page.getList();
+
+        if (memorials.isEmpty()) {
+            return "全部用户暂无纪念日记录";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("全部用户共有 ").append(memorials.size()).append(" 个纪念日：\n");
+        for (AdminMemorialResponse m : memorials) {
+            sb.append("- [ID=").append(m.getId()).append("] ")
+              .append(m.getName())
+              .append("（").append(m.getDate()).append("）")
+              .append(" 类型:").append(m.getType())
+              .append("\n");
+        }
+        return sb.toString();
+    }
+
     /**
      * 从 ToolContext 中提取当前登录用户ID
-     * 调用方通过 ChatClient.prompt().toolContext(Map.of("userId", userId)) 传入
+     * 调用方通过 ChatClient.prompt().toolContext(Map.of("userId", userId, "role", role)) 传入
      */
     private Long extractUserId(ToolContext toolContext) {
         if (toolContext == null || toolContext.getContext() == null) {
@@ -186,6 +268,47 @@ public class AiToolService {
         }
         // 兼容 Integer 等数字类型
         return ((Number) userIdVal).longValue();
+    }
+
+    /**
+     * 从 ToolContext 中提取当前登录用户角色（USER/ADMIN）
+     */
+    private String extractRole(ToolContext toolContext) {
+        if (toolContext == null || toolContext.getContext() == null) {
+            return null;
+        }
+        Object roleVal = toolContext.getContext().get("role");
+        return roleVal == null ? null : String.valueOf(roleVal);
+    }
+
+    /**
+     * 兼容多种日期格式，统一转换为 yyyy-MM-dd
+     * SpringAI 调用工具时 date 参数可能是各种格式，需要容错：
+     *   2026-09-08 → 直接通过
+     *   2026/09/08、2026.09.08、2026_09_08 → 替换分隔符
+     *   09/08 → 补当前年
+     */
+    private String normalizeDate(String dateInput) {
+        if (dateInput == null || dateInput.trim().isEmpty()) {
+            throw new IllegalArgumentException("日期不能为空");
+        }
+        String d = dateInput.trim();
+
+        // 统一替换分隔符为 -
+        d = d.replace('/', '-').replace('.', '-').replace('_', '-');
+
+        // 补全四位年份："MM-dd" → "yyyy-MM-dd"（用当前年）
+        if (d.matches("\\d{2}-\\d{2}")) {
+            d = LocalDate.now().getYear() + "-" + d;
+        }
+
+        // 验证格式：必须是 yyyy-MM-dd
+        try {
+            LocalDate.parse(d);
+            return d;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("无法解析日期：" + dateInput + "，请使用 yyyy-MM-dd 格式");
+        }
     }
 
     /**
@@ -337,9 +460,17 @@ public class AiToolService {
 
     private final ScheduleService scheduleService;
     private final MemorialService memorialService;
+    // 管理员视角查询服务（查全部用户的日程/纪念日）
+    private final AdminScheduleService adminScheduleService;
+    private final AdminMemorialService adminMemorialService;
 
-    public AiToolService(ScheduleService scheduleService, MemorialService memorialService) {
+    public AiToolService(ScheduleService scheduleService,
+                         MemorialService memorialService,
+                         AdminScheduleService adminScheduleService,
+                         AdminMemorialService adminMemorialService) {
         this.scheduleService = scheduleService;
         this.memorialService = memorialService;
+        this.adminScheduleService = adminScheduleService;
+        this.adminMemorialService = adminMemorialService;
     }
 }

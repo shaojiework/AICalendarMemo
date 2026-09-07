@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import Sidebar from './components/Sidebar.vue'
 import Navbar from './components/Navbar.vue'
+import AiAgentFloat from '@/components/AiAgentFloat.vue'
 
 // 侧边栏折叠状态（由顶栏折叠按钮切换）
 const isCollapse = ref(false)
@@ -25,6 +26,9 @@ const isCollapse = ref(false)
         <router-view />
       </main>
     </div>
+
+    <!-- 全局悬浮AI智能体：与 router-view 同级，切换路由不销毁，单例WS复用 -->
+    <AiAgentFloat />
   </div>
 </template>
 

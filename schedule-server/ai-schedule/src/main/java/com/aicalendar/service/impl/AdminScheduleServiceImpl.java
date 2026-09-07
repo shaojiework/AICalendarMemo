@@ -39,15 +39,21 @@ public class AdminScheduleServiceImpl implements AdminScheduleService {
                 .orderByDesc(Schedule::getStartTime);
 
         // 日期过滤：开始时间落在指定当天 [00:00, 次日00:00)
+        LocalDateTime startOfDay = null;
+        LocalDateTime nextDayStart = null;
         if (StringUtils.hasText(date)) {
             LocalDate day = LocalDate.parse(date);
-            LocalDateTime startOfDay = day.atStartOfDay();
-            LocalDateTime nextDayStart = day.plusDays(1).atStartOfDay();
+            startOfDay = day.atStartOfDay();
+            nextDayStart = day.plusDays(1).atStartOfDay();
             wrapper.ge(Schedule::getStartTime, startOfDay).lt(Schedule::getStartTime, nextDayStart);
         }
 
+        log.info("[后台日程查询] keyword={}, type={}, date={}, startOfDay={}, nextDayStart={}, pageNum={}, pageSize={}",
+                keyword, type, date, startOfDay, nextDayStart, pageNum, pageSize);
+
         List<Schedule> pageList = scheduleMapper.selectList(wrapper);
         PageInfo<Schedule> pageInfo = new PageInfo<>(pageList);
+        log.info("[后台日程查询] 命中 {} 条，总记录数 {}", pageList.size(), pageInfo.getTotal());
         List<AdminScheduleResponse> list = pageList.stream().map(this::toResponse).toList();
         return PageResponse.of(list, pageInfo);
     }
