@@ -20,6 +20,22 @@ spring:
     time-zone: Asia/Shanghai
     serialization:
       write-dates-as-timestamps: false
+  # Redis：存放双token的令牌状态（refresh白名单、access登出黑名单）
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      # 本机Redis未设密码时保持注释，配置空串会导致AUTH认证失败
+      # password: ${REDIS_PASSWORD}
+      database: 0
+      timeout: 3000ms
+      lettuce:
+        pool:
+          # 单机模式下连接数需求低，够用即可，避免占用Redis连接
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: 2000ms
   ai:
     openai:
       api-key: ${SILICONFLOW_API_KEY}
@@ -53,7 +69,13 @@ file:
   access-path: /upload/
 
 jwt:
-  # 签名密钥（生产环境请通过环境变量注入）
-  secret: ${JWT_SECRET:ai-calendar-jwt-secret-key}
-  # token过期时间（小时）
-  expire-hours: 2
+  # 访问令牌密钥（生产环境请通过环境变量注入）
+  access-secret: ${JWT_ACCESS_SECRET:ai-calendar-access-secret-key}
+  # 刷新令牌密钥：与访问令牌分离，避免一类令牌可被当作另一类使用
+  refresh-secret: ${JWT_REFRESH_SECRET:ai-calendar-refresh-secret-key}
+  # 访问令牌有效期（分钟）：短寿命，泄露窗口小
+  access-expire-minutes: 30
+  # 前台刷新令牌有效期（天）：长寿命，减少重新登录频率
+  refresh-expire-days: 7
+  # 后台管理刷新令牌有效期（小时）：管理端权限更高，有效期收紧
+  admin-refresh-expire-hours: 12

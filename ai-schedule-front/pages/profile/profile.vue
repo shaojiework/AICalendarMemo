@@ -97,7 +97,8 @@ import { onShow } from '@dcloudio/uni-app'
 import { profileApi } from '@/api/profile'
 import { userApi } from '@/api/user'
 import { baseUrl } from '@/config/baseUrl'
-import { clearLoginState, getUserInfo, setUserInfo } from '@/utils/auth'
+import { clearLoginState, getUserInfo, setUserInfo, getRefreshToken } from '@/utils/auth'
+import { authApi } from '@/api/auth'
 
 const getAvatarUrl = (avatar) => {
   if (!avatar) return '/static/avatar.png'
@@ -170,8 +171,14 @@ const logout = () => {
   uni.showModal({
     title: '提示',
     content: '确定要退出登录吗？',
-    success: function (res) {
+    success: async function (res) {
       if (res.confirm) {
+        // 先通知后端撤销本次会话令牌，失败不阻断本地退出
+        try {
+          await authApi.logout(getRefreshToken())
+        } catch (e) {
+          console.warn('退出登录接口调用失败:', e)
+        }
         // 清除登录状态并返回登录页
         clearLoginState()
         uni.showToast({

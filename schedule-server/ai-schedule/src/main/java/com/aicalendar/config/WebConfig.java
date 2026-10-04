@@ -19,13 +19,21 @@ public class WebConfig implements WebMvcConfigurer {
     private JwtInterceptor jwtInterceptor;
 
     /**
-     * 注册JWT登录拦截器：拦截/api/**，放行登录注册白名单
+     * 注册JWT登录拦截器：拦截/api/**，放行登录、注册、令牌刷新与登出白名单
+     * 刷新与登出接口凭令牌自证身份，不能要求已有效的访问令牌
      */
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(jwtInterceptor)
                 .addPathPatterns("/api/**")
-                .excludePathPatterns("/api/auth/login", "/api/auth/register", "/api/admin/login");
+                .excludePathPatterns(
+                        "/api/auth/login",
+                        "/api/auth/register",
+                        "/api/auth/refresh",
+                        "/api/auth/logout",
+                        "/api/admin/login",
+                        "/api/admin/refresh",
+                        "/api/admin/logout");
     }
 
     @Override

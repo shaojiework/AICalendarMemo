@@ -9,8 +9,8 @@ import com.aicalendar.dto.response.LoginResponse;
 import com.aicalendar.dto.response.UserResponse;
 import com.aicalendar.entity.User;
 import com.aicalendar.mapper.UserMapper;
+import com.aicalendar.service.AuthService;
 import com.aicalendar.service.UserService;
-import com.aicalendar.util.JwtUtil;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +26,7 @@ import org.springframework.stereotype.Service;
 public class UserServiceImpl implements UserService {
 
     private final UserMapper userMapper;
-    private final JwtUtil jwtUtil;
+    private final AuthService authService;
     private final BCryptPasswordEncoder passwordEncoder;
 
     @Override
@@ -43,14 +43,8 @@ public class UserServiceImpl implements UserService {
             throw new BizException(ResponseCode.FORBIDDEN);
         }
 
-        // 签发JWT并组装响应
-        LoginResponse response = new LoginResponse();
-        response.setToken(jwtUtil.generateToken(user.getId(), user.getRole()));
-        response.setUserId(user.getId());
-        response.setUsername(user.getUsername());
-        response.setNickname(user.getNickname());
-        response.setAvatar(user.getAvatar());
-        response.setRole(user.getRole());
+        // 签发访问+刷新双令牌，刷新令牌同步登记进Redis白名单
+        LoginResponse response = authService.issueTokenPair(user);
         log.info("[登录] 用户登录成功: {}, 角色: {}", user.getUsername(), user.getRole());
         return response;
     }

@@ -1,5 +1,8 @@
 import { baseUrl } from '@/config/baseUrl'
-import { getToken } from '@/utils/auth'
+import { getToken, getRefreshToken, refreshAccessToken, clearLoginState } from '@/utils/auth'
+
+// 接口基地址（与WebSocket保持一致的本地兜底）
+const httpBase = baseUrl || 'http://localhost:8080'
 
 // 带JWT令牌的请求头（ai模块直连uni.request，需手动携带token）
 const authHeader = () => ({
@@ -8,6 +11,7 @@ const authHeader = () => ({
 
 /**
  * AI 接口封装
+ * 流式聊天走WebSocket：握手携带访问令牌，连接被拒时刷新令牌后重试一次
  */
 export const aiApi = {
   /**
@@ -19,57 +23,55 @@ export const aiApi = {
    * @param {Function} onError 错误回调
    */
   chatWebSocket(conversationId, message, onMessage, onComplete, onError) {
-    // 使用配置的baseUrl，如果未定义则使用默认值
     const apiBaseUrl = baseUrl || 'http://localhost:8080'
+    return this.openSocket(apiBaseUrl, conversationId, message, onMessage, onComplete, onError, false)
+  },
 
-    // 将 http/https 转换为 ws/wss
-    let wsUrl = apiBaseUrl.replace(/^http/, 'ws') + '/ws/ai/chat'
-    // 握手阶段携带 token 供后端 AiWebSocketAuthInterceptor 解析 userId
-    const token = getToken()
-    if (token) wsUrl += '?token=' + encodeURIComponent(token)
+  /**
+   * 建立连接并流式对话
+   * @param {boolean} retried 是否已因令牌过期刷新重试过，防止无限重连
+   */
+  openSocket(apiBaseUrl, conversationId, message, onMessage, onComplete, onError, retried) {
+    // 将 http/https 转换为 ws/wss，握手URL携带访问令牌供后端鉴权
+    const wsUrl = apiBaseUrl.replace(/^http/, 'ws') + '/ws/ai/chat?token=' + encodeURIComponent(getToken())
 
-    console.log('WebSocket URL:', wsUrl)
     console.log('发送消息:', { conversationId, message })
-    
+
     // 关闭之前的连接
     if (aiApi.socketTask) {
-      aiApi.socketTask.close()
+      try { aiApi.socketTask.close() } catch (e) { /* 忽略 */ }
     }
-    
-    // 创建 WebSocket 连接
-    aiApi.socketTask = uni.connectSocket({
+
+    const socketTask = uni.connectSocket({
       url: wsUrl,
-      success: () => {
-        console.log('WebSocket连接创建成功')
-      },
+      success: () => {},
       fail: (err) => {
         console.error('WebSocket连接创建失败:', err)
         onError && onError(err)
       }
     })
-    
+    aiApi.socketTask = socketTask
+
+    // 连接是否成功建立过：没建立就被关闭即握手被拒，可刷新令牌重试
+    let opened = false
+    // 本轮对话是否已终结：终结后的关闭属于正常收尾，不触发重试
+    let finished = false
+
     // 连接成功回调
-    aiApi.socketTask.onOpen(() => {
-      console.log('WebSocket连接已建立')
-      // 发送消息
-      const data = {
-        conversationId: conversationId,
-        message: message
-      }
-      aiApi.socketTask.send({
-        data: JSON.stringify(data),
-        success: () => {
-          console.log('消息发送成功')
-        },
+    socketTask.onOpen(() => {
+      opened = true
+      socketTask.send({
+        data: JSON.stringify({ conversationId, message }),
         fail: (err) => {
           console.error('WebSocket发送失败:', err)
+          finished = true
           onError && onError(err)
         }
       })
     })
-    
+
     // 收到消息回调（流式协议：chunk片段 / end结束 / error错误）
-    aiApi.socketTask.onMessage((res) => {
+    socketTask.onMessage((res) => {
       try {
         const response = JSON.parse(res.data)
 
@@ -78,46 +80,66 @@ export const aiApi = {
           onMessage && onMessage(response.content)
         } else if (response.type === 'end') {
           // 流结束：更新对话ID并关闭连接
+          finished = true
           onComplete && onComplete(response.conversationId)
-          aiApi.socketTask.close()
+          socketTask.close()
         } else if (response.type === 'error') {
           // 服务端错误：content为降级提示文案
           console.error('后端返回错误:', response.content)
+          finished = true
           onError && onError(new Error(response.content || 'AI服务暂时不可用'))
-          aiApi.socketTask.close()
+          socketTask.close()
         }
       } catch (e) {
         console.error('WebSocket消息解析失败:', e, '原始数据:', res.data)
+        finished = true
         onError && onError(e)
-        aiApi.socketTask.close()
+        socketTask.close()
       }
     })
-    
+
     // 连接关闭回调
-    aiApi.socketTask.onClose((res) => {
+    socketTask.onClose((res) => {
       console.log('WebSocket连接已关闭:', res)
-      aiApi.socketTask = null
+      if (aiApi.socketTask === socketTask) {
+        aiApi.socketTask = null
+      }
+      // 握手被拒（访问令牌过期）：刷新令牌后重试一次
+      if (!opened && !finished && !retried && getRefreshToken()) {
+        refreshAccessToken()
+          .then(() => aiApi.openSocket(apiBaseUrl, conversationId, message, onMessage, onComplete, onError, true))
+          .catch(() => {
+            // 刷新失败：登录态彻底失效，清除状态回登录页
+            clearLoginState()
+            finished = true
+            onError && onError(new Error('登录已失效，请重新登录'))
+          })
+        return
+      }
+      if (!opened && !finished) {
+        finished = true
+        onError && onError(new Error('AI服务连接失败，请稍后重试'))
+      }
     })
-    
+
     // 错误回调
-    aiApi.socketTask.onError((err) => {
+    socketTask.onError((err) => {
       console.error('WebSocket错误:', err)
-      onError && onError(err)
-      aiApi.socketTask = null
+      if (aiApi.socketTask === socketTask) {
+        aiApi.socketTask = null
+      }
     })
-    
-    return aiApi.socketTask
+
+    return socketTask
   },
 
   /**
    * 普通聊天（非流式）
    */
   chat(conversationId, message) {
-    const apiBaseUrl = baseUrl || 'http://localhost:8080'
-    
     return new Promise((resolve, reject) => {
       uni.request({
-        url: `${apiBaseUrl}/api/ai/chat`,
+        url: `${httpBase}/api/ai/chat`,
         method: 'POST',
         header: authHeader(),
         data: {
@@ -142,11 +164,9 @@ export const aiApi = {
    * 获取对话历史
    */
   getHistory(conversationId) {
-    const apiBaseUrl = baseUrl || 'http://localhost:8080'
-    
     return new Promise((resolve, reject) => {
       uni.request({
-        url: `${apiBaseUrl}/api/ai/chat/history`,
+        url: `${httpBase}/api/ai/chat/history`,
         method: 'GET',
         header: authHeader(),
         data: {
@@ -170,11 +190,9 @@ export const aiApi = {
    * 获取最近聊天记录
    */
   getRecent(limit = 20) {
-    const apiBaseUrl = baseUrl || 'http://localhost:8080'
-    
     return new Promise((resolve, reject) => {
       uni.request({
-        url: `${apiBaseUrl}/api/ai/chat/recent`,
+        url: `${httpBase}/api/ai/chat/recent`,
         method: 'GET',
         header: authHeader(),
         data: {
@@ -198,11 +216,9 @@ export const aiApi = {
    * 删除对话
    */
   deleteConversation(conversationId) {
-    const apiBaseUrl = baseUrl || 'http://localhost:8080'
-    
     return new Promise((resolve, reject) => {
       uni.request({
-        url: `${apiBaseUrl}/api/ai/chat`,
+        url: `${httpBase}/api/ai/chat`,
         method: 'DELETE',
         header: authHeader(),
         data: {

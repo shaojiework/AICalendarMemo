@@ -1,6 +1,6 @@
 <script setup>
 import { ref, reactive, onBeforeUnmount, nextTick } from 'vue'
-import { useAuthStore } from '@/store/auth'
+import { getToken, getRefreshToken, refreshAccessToken } from '@/utils/token'
 
 /**
  * 全局悬浮AI智能体组件
@@ -9,8 +9,6 @@ import { useAuthStore } from '@/store/auth'
  * 切换路由不销毁组件，单例 WS；组件卸载时手动 close 并清监听
  * 默认折叠为 FAB，点击展开为对话窗口
  */
-
-const authStore = useAuthStore()
 
 // 对话窗口可见性（默认折叠态，点击 FAB 展开）
 const visible = ref(false)
@@ -34,6 +32,10 @@ const conversationId = ref('')
 let socket = null
 // 重连控制：避免主动关闭时还触发重连
 let manualClose = false
+// 握手被拒后是否已刷新令牌重试过，防止无限重连
+let authRetried = false
+// 等待连接建立后补发的消息（刷新重连场景）
+let pendingPayload = null
 
 // ws 连接状态（用于显示连接指示器）
 const wsStatus = ref('idle') // idle | connecting | open | closed
@@ -46,12 +48,13 @@ const wsStatus = ref('idle') // idle | connecting | open | closed
 const buildWsUrl = () => {
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   const host = window.location.host
-  const token = authStore.token || localStorage.getItem('admin_token') || ''
-  return `${proto}//${host}/ws/ai/chat?token=${encodeURIComponent(token)}`
+  // 握手只接受访问令牌，统一从令牌工具读取最新值
+  return `${proto}//${host}/ws/ai/chat?token=${encodeURIComponent(getToken())}`
 }
 
 /**
  * 建立 WebSocket 连接（单例：已存在且为 OPEN 状态时复用）
+ * 握手阶段被拒（访问令牌过期）时，刷新令牌后重连一次并补发本轮消息
  */
 const ensureSocket = () => {
   if (socket && socket.readyState === WebSocket.OPEN) return
@@ -65,8 +68,18 @@ const ensureSocket = () => {
   wsStatus.value = 'connecting'
   socket = new WebSocket(buildWsUrl())
 
+  // 本次连接是否建立成功过：没建立就被关闭说明握手被拒，值得刷新令牌重试
+  let opened = false
+
   socket.onopen = () => {
+    opened = true
+    authRetried = false
     wsStatus.value = 'open'
+    // 刷新重连场景下补发等待中的消息
+    if (pendingPayload && socket.readyState === WebSocket.OPEN) {
+      socket.send(pendingPayload)
+      pendingPayload = null
+    }
   }
 
   socket.onmessage = (event) => {
@@ -100,14 +113,28 @@ const ensureSocket = () => {
 
   socket.onclose = () => {
     wsStatus.value = 'closed'
-    if (!manualClose && socket) {
-      socket = null
+    socket = null
+    // 从未建立成功即被关闭：握手阶段访问令牌过期或已被登出，刷新令牌后重连一次
+    if (!opened && !manualClose && !authRetried && getRefreshToken()) {
+      refreshAccessToken()
+        .then(() => {
+          authRetried = true
+          ensureSocket()
+        })
+        .catch(() => {
+          failWithMessage('登录已失效，请重新登录后再使用AI助手。')
+        })
+      return
+    }
+    if (!opened && !manualClose) {
+      failWithMessage('连接AI服务失败，请稍后重试。')
     }
   }
 }
 
 /**
  * 发送消息：复用前台 ai.js 的发送协议 { conversationId, message }
+ * 连接未就绪时把消息挂到 pendingPayload，由onopen补发（含刷新令牌重连场景）
  */
 const sendMessage = () => {
   const text = userInput.value.trim()
@@ -118,21 +145,29 @@ const sendMessage = () => {
   sending.value = true
   userInput.value = ''
 
-  ensureSocket()
-
   const payload = JSON.stringify({
     conversationId: conversationId.value,
     message: text
   })
 
+  ensureSocket()
+
   if (socket && socket.readyState === WebSocket.OPEN) {
     socket.send(payload)
-  } else if (socket && socket.readyState === WebSocket.CONNECTING) {
-    socket.addEventListener('open', () => socket.send(payload), { once: true })
   } else {
-    messages[messages.length - 1].content = '连接AI服务失败，请检查登录状态后重试。'
-    messages[messages.length - 1].loading = false
-    sending.value = false
+    // 连接建立中或握手被拒后重连中：等onopen补发
+    pendingPayload = payload
+  }
+}
+
+/** 连接彻底不可用时收尾：结束loading并在AI气泡给出提示 */
+const failWithMessage = (text) => {
+  pendingPayload = null
+  sending.value = false
+  const last = messages[messages.length - 1]
+  if (last && last.role === 'assistant') {
+    last.content = text
+    last.loading = false
   }
 }
 

@@ -9,7 +9,7 @@ import com.aicalendar.dto.response.PageResponse;
 import com.aicalendar.entity.User;
 import com.aicalendar.mapper.UserMapper;
 import com.aicalendar.service.AdminUserService;
-import com.aicalendar.util.JwtUtil;
+import com.aicalendar.service.AuthService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
@@ -30,7 +30,7 @@ import java.util.List;
 public class AdminUserServiceImpl implements AdminUserService {
 
     private final UserMapper userMapper;
-    private final JwtUtil jwtUtil;
+    private final AuthService authService;
     private final BCryptPasswordEncoder passwordEncoder;
 
     @Override
@@ -51,14 +51,8 @@ public class AdminUserServiceImpl implements AdminUserService {
             throw new BizException(ResponseCode.FORBIDDEN);
         }
 
-        // 签发JWT并组装响应
-        LoginResponse response = new LoginResponse();
-        response.setToken(jwtUtil.generateToken(user.getId(), user.getRole()));
-        response.setUserId(user.getId());
-        response.setUsername(user.getUsername());
-        response.setNickname(user.getNickname());
-        response.setAvatar(user.getAvatar());
-        response.setRole(user.getRole());
+        // 签发访问+刷新双令牌（管理端刷新令牌有效期更短）
+        LoginResponse response = authService.issueTokenPair(user);
         log.info("[后台登录] 管理员登录成功: {}", user.getUsername());
         return response;
     }

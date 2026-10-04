@@ -100,7 +100,7 @@ const handleLogin = async () => {
       username: loginForm.username.trim(),
       password: loginForm.password
     })
-    const { token, role, nickname, username, avatar, userId } = res.data
+    const { token, refreshToken, role, nickname, username, avatar, userId } = res.data
     // ADMIN账号专用于后台管理系统，前台弹窗提示后留在登录页
     if (role === 'ADMIN') {
       uni.showModal({
@@ -111,7 +111,7 @@ const handleLogin = async () => {
       return
     }
     // 普通用户：保存登录状态并进入首页
-    setLoginState(token, { userId, username, nickname, avatar, role })
+    setLoginState(token, refreshToken, { userId, username, nickname, avatar, role })
     uni.reLaunch({ url: '/pages/home/home' })
   } catch (err) {
     // 错误提示已由request.js统一处理

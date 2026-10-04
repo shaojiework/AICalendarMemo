@@ -1,6 +1,6 @@
 import { request } from '@/utils/request'
 import { baseUrl } from '@/config/baseUrl'
-import { getToken } from '@/utils/auth'
+import { uploadWithAuth } from '@/utils/auth'
 
 export const profileApi = {
   getProfile() {
@@ -18,47 +18,24 @@ export const profileApi = {
     })
   },
 
+  /** 上传头像：令牌过期自动刷新重试，业务解析与原逻辑一致 */
   uploadAvatar(filePath) {
-    return new Promise((resolve, reject) => {
-      uni.uploadFile({
-        url: baseUrl + '/api/file/upload',
-        filePath: filePath,
-        name: 'file',
-        // 携带JWT令牌
-        header: {
-          'Authorization': 'Bearer ' + getToken()
-        },
-        formData: {
-          type: 'profile'
-        },
-        success: (res) => {
-          if (res.statusCode === 200) {
-            const data = JSON.parse(res.data)
-            if (data.code === 200) {
-              resolve(data)
-            } else {
-              uni.showToast({
-                title: data.message || '上传失败',
-                icon: 'none'
-              })
-              reject(data)
-            }
-          } else {
-            uni.showToast({
-              title: '上传失败',
-              icon: 'none'
-            })
-            reject(res)
-          }
-        },
-        fail: (err) => {
-          uni.showToast({
-            title: '上传失败',
-            icon: 'none'
-          })
-          reject(err)
+    return uploadWithAuth({
+      url: baseUrl + '/api/file/upload',
+      filePath: filePath,
+      name: 'file',
+      formData: { type: 'profile' }
+    }).then((res) => {
+      if (res.statusCode === 200) {
+        const data = JSON.parse(res.data)
+        if (data.code === 200) {
+          return data
         }
-      })
+        uni.showToast({ title: data.message || '上传失败', icon: 'none' })
+        return Promise.reject(data)
+      }
+      uni.showToast({ title: '上传失败', icon: 'none' })
+      return Promise.reject(res)
     })
   }
 }

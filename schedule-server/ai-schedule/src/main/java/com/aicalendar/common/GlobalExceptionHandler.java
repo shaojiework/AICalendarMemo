@@ -38,12 +38,27 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 处理业务异常（登录失败、权限不足等）
+     * 处理业务异常（登录失败、权限不足、令牌失效等）
+     * 令牌类业务码为四位数字，不是合法HTTP状态码，统一映射为HTTP 401，
+     * 真实原因通过返回体code区分，前端据此决定静默刷新还是跳登录页
      */
     @ExceptionHandler(BizException.class)
     public ResponseEntity<Result<Void>> handleBizException(BizException ex) {
-        return ResponseEntity.status(ex.getCode())
+        return ResponseEntity.status(toHttpStatus(ex.getCode()))
                 .body(Result.error(ex.getCode(), ex.getMessage()));
+    }
+
+    /**
+     * 业务码转HTTP状态码：仅在合法区间内直接复用，越界时归到401/500
+     */
+    private int toHttpStatus(int code) {
+        if (code >= 100 && code <= 599) {
+            return code;
+        }
+        if (code >= 40100 && code < 40200) {
+            return HttpStatus.UNAUTHORIZED.value();
+        }
+        return HttpStatus.INTERNAL_SERVER_ERROR.value();
     }
 
     /**

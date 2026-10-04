@@ -19,9 +19,18 @@ public enum ResponseCode {
     
     /** 未授权 */
     UNAUTHORIZED(401, "未授权"),
-    
+
     /** 禁止访问 */
-    FORBIDDEN(403, "禁止访问");
+    FORBIDDEN(403, "禁止访问"),
+
+    /** 访问令牌已过期：可凭刷新令牌静默续期，无需用户重新登录 */
+    TOKEN_EXPIRED(40101, "访问令牌已过期"),
+
+    /** 令牌非法：签名错误、类型不符或已被登出拉黑，必须重新登录 */
+    TOKEN_INVALID(40102, "登录状态无效，请重新登录"),
+
+    /** 刷新令牌失效：已过期、已被撤销或已被使用过，必须重新登录 */
+    REFRESH_INVALID(40103, "登录已失效，请重新登录");
 
     private final int code;
     private final String message;
