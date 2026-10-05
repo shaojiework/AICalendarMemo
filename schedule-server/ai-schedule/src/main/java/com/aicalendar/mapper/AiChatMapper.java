@@ -30,6 +30,13 @@ public interface AiChatMapper {
     List<AiChat> selectRecent(@Param("userId") Long userId, @Param("limit") int limit);
 
     /**
+     * 查询某用户某会话最近N条消息（时间倒序，供Redis记忆窗口冷启动回填）
+     */
+    List<AiChat> selectLastByConversation(@Param("userId") Long userId,
+                                          @Param("conversationId") String conversationId,
+                                          @Param("limit") int limit);
+
+    /**
      * 删除某用户的对话记录
      */
     int deleteByConversationId(@Param("userId") Long userId, @Param("conversationId") String conversationId);

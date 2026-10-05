@@ -93,14 +93,20 @@ public class AiToolService {
     }
 
     @Tool(
-        description = "查询所有纪念日列表，返回所有纪念日的详细信息"
+        description = "查询当前登录用户自己的纪念日列表。管理员查看全部用户的纪念日请改用 adminGetAllMemorials"
     )
     public String getAllMemorials(ToolContext toolContext) {
         Long userId = extractUserId(toolContext);
+        // 管理员调用用户视角工具会只查到管理员自己的数据（通常为空），
+        // 若直接返回"暂无"极易被误判为全站无数据，故显式引导改用管理员工具
+        if ("ADMIN".equals(extractRole(toolContext))) {
+            return "该工具只返回当前账号（管理员）自己的纪念日，不代表全站数据。" +
+                    "如需查看全部用户的纪念日，请调用 adminGetAllMemorials。";
+        }
         List<MemorialResponse> memorials = memorialService.getAllMemorials(userId);
 
         if (memorials.isEmpty()) {
-            return "暂无纪念日记录";
+            return "当前用户暂无纪念日记录";
         }
 
         StringBuilder sb = new StringBuilder();
@@ -143,14 +149,18 @@ public class AiToolService {
     }
 
     @Tool(
-        description = "查询即将到来的纪念日，返回最近的纪念日列表"
+        description = "查询当前登录用户自己即将到来的纪念日（未来30天内）。管理员查全站数据请用 adminGetAllMemorials"
     )
     public String getUpcomingMemorials(ToolContext toolContext) {
         Long userId = extractUserId(toolContext);
+        if ("ADMIN".equals(extractRole(toolContext))) {
+            return "该工具只统计当前账号（管理员）自己即将到来的纪念日，不代表全站数据。" +
+                    "如需查看全部用户的纪念日，请调用 adminGetAllMemorials。";
+        }
         List<MemorialResponse> memorials = memorialService.getUpcomingMemorials(userId);
 
         if (memorials.isEmpty()) {
-            return "暂无即将到来的纪念日";
+            return "当前用户暂无即将到来的纪念日";
         }
 
         StringBuilder sb = new StringBuilder();

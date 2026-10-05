@@ -79,3 +79,13 @@ jwt:
   refresh-expire-days: 7
   # 后台管理刷新令牌有效期（小时）：管理端权限更高，有效期收紧
   admin-refresh-expire-hours: 12
+
+# AI多轮记忆：Redis滑动窗口参数
+ai:
+  memory:
+    # 保留轮数（1轮=一问一答，10轮即窗口最多20条）
+    window-rounds: 10
+    # 滑动过期（分钟）：每次读写重置，闲置超时后由DB冷启动回填
+    ttl-minutes: 30
+    # 单条内容最大字符数：超长截断，防止一条长回答把窗口挤爆
+    max-content-length: 4000

@@ -30,6 +30,14 @@
         LIMIT #{limit}
     </select>
 
+    <!-- 记忆窗口冷启动：按会话取最近N条（倒序，Service层反转为正序后回填） -->
+    <select id="selectLastByConversation" resultMap="AiChatResult">
+        SELECT * FROM ai_chat
+        WHERE user_id = #{userId} AND conversation_id = #{conversationId}
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit}
+    </select>
+
     <delete id="deleteByConversationId">
         DELETE FROM ai_chat WHERE user_id = #{userId} AND conversation_id = #{conversationId}
     </delete>

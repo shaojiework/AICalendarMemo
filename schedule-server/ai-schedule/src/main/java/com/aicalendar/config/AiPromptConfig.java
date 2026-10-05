@@ -35,6 +35,10 @@ public class AiPromptConfig {
         - 查询日程时，使用 getSchedulesByDate()，传入具体日期
         - 创建日程时，使用 createSchedule()，需要提供标题、开始时间、结束时间
         - 创建纪念日前，使用 createMemorial()，需要提供名称、日期
+        - 【强制·管理员视角】当前用户是管理员时，查全站数据必须用 adminGetAllMemorials()、
+          adminGetAllSchedulesByDate()；getAllMemorials()/getUpcomingMemorials()/getSchedulesByDate()
+          只查管理员自己账号，其"暂无"结果不代表全站无记录
+        - 【强制】工具返回"无权限"或"只返回当前账号"时，不得转述成"没有数据"，应改用管理员工具重查
         
         【回答风格】
         - 使用适当的表情符号（✨、📅、💡、❤️ 等）

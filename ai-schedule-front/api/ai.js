@@ -134,33 +134,6 @@ export const aiApi = {
   },
 
   /**
-   * 普通聊天（非流式）
-   */
-  chat(conversationId, message) {
-    return new Promise((resolve, reject) => {
-      uni.request({
-        url: `${httpBase}/api/ai/chat`,
-        method: 'POST',
-        header: authHeader(),
-        data: {
-          conversationId: conversationId,
-          message: message
-        },
-        success: (res) => {
-          if (res.data.code === 200) {
-            resolve(res.data.data)
-          } else {
-            reject(new Error(res.data.message || '请求失败'))
-          }
-        },
-        fail: (err) => {
-          reject(err)
-        }
-      })
-    })
-  },
-
-  /**
    * 获取对话历史
    */
   getHistory(conversationId) {

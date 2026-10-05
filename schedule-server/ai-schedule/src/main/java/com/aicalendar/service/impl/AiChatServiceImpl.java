@@ -3,6 +3,7 @@ package com.aicalendar.service.impl;
 import com.aicalendar.entity.AiChat;
 import com.aicalendar.mapper.AiChatMapper;
 import com.aicalendar.service.AiChatService;
+import com.aicalendar.service.AiMemoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,9 @@ public class AiChatServiceImpl implements AiChatService {
 
     @Autowired
     private AiChatMapper aiChatMapper;
+
+    @Autowired
+    private AiMemoryService aiMemoryService;
 
     @Override
     @Transactional
@@ -47,5 +51,7 @@ public class AiChatServiceImpl implements AiChatService {
     @Transactional
     public void deleteConversation(Long userId, String conversationId) {
         aiChatMapper.deleteByConversationId(userId, conversationId);
+        // 同步清除Redis记忆窗口，防止已删对话继续喂给模型（宁多清不漏清：误清可由DB回填自愈）
+        aiMemoryService.evict(userId, conversationId);
     }
 }
